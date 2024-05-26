@@ -1,13 +1,29 @@
 import http.server
 import json
 import logging
+import requests
+import base64
+import os
+from datetime import datetime
 
+class IpCam:
+    name = ""
+    ip = ""
+    in_out = False
+    pay = False
+    open = False
 class MyHandler(http.server.BaseHTTPRequestHandler):
+    AlarmInfoPlate = "AlarmInfoPlate"
+    AlarmGioIn = "AlarmGioIn"
+    heartbeat = "heartbeat"
+    SerialData = "SerialData"
+    Response_AlarmInfoPlate = "Response_AlarmInfoPlate"
+    Response_SerialData = "Response_SerialData"
+    Response_Heartbeat = "Response_Heartbeat"
+
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
-        logging.info("Received POST request: %s", post_data.decode('utf-8'))
-
         try:
             data = json.loads(post_data)
             response = self.handle_request(data)
@@ -23,31 +39,198 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps(response).encode('utf-8'))
-
     def handle_request(self, data):
         if "AlarmInfoPlate" in data:
-            # Return the new response content based on the protocol document
-            logging.info("receive info")
-            response = {
+            response = check_car(data)
+            res = {
 		    "Response_AlarmInfoPlate": {
 			    "info": "ok",
 			    "content": "retransfer_stop",
 			    "is_pay": "true",
 			    "serialData": []
-		    }
-	    }
-        else:
-            # Existing functionality
+		        }
+	        }
+            print(response ==res)
+        elif "heartbeat" in data:
+            response = {"status": "received"}
+        elif "AlarmGioIn" in data:
+            response = {"status": "received"}
+        elif "SerialData" in data:
             response = {"status": "received"}
         
         return response
+def check_car(data):
+    #car detailed data
+    reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
+    ip = data["AlarmInfoPlate"]["ipaddr"]
+    size = "0"
+    color = reselt["carColor"]
+    image_size = reselt["imageFileLen"]
+    image_string = reselt["imageFile"]
+    car_number = reselt["license"]
+    file_name = "/storage/sdcard/Cars/" + car_number + ".png"
+    # response for picture
+    res = {
+		    "Response_AlarmInfoPlate": {
+			    "info": "ok",
+			    "content": "retransfer_stop",
+			    "is_pay": "true",
+			    "serialData": []
+		        }
+	        }
+    if os.path.exists(file_name):
+        os.remove(file_name)
+    else:
+        with open(file_name, "wb") as fh:
+            fh.write(base64.decodebytes(str.encode(image_string)))
+    #get ip cam data
+    # cam = getIpCam("192.168.5.5")
+    # cam_in_out = cam["in_out"]
+    # carInside = getCarInside(car_number)
+    
+# if carInside is None:
+    #         #add new car and open gate
+    #         if os.path.exists(file_name):
+    #             os.remove(file_name)
+    #         with open(file_name, "wb") as fh:
+    #             fh.write(base64.decodebytes(str.encode(image_string)))
+    #         addCarInside(car_number, "A", file_name, size, color)
+    # else:
+    #     deleteCarInside(car_number)
+    # if cam_in_out == "0":
+    #     available = slotSearch()
+    #     if available > 0 and carInside is None:
+    #         #add new car and open gate
+    #         if os.path.exists(file_name):
+    #             os.remove(file_name)
+    #         with open(file_name, "wb") as fh:
+    #             fh.write(base64.decodebytes(str.encode(image_string)))
+    #         addCarInside(car_number, "A", file_name, size, color)
+    # else:
+    #     deleteCarInside(car_number)
+    #     if carInside is not None and carInside["time_pay"] is not None:
+    #         time_pay = carInside["time_pay"]
+    #         nowTime = datetime.now()
+    #         payTime = datetime.strptime(time_pay, "%Y-%m-%d %H:%M:%S")
+    #         diffTime = nowTime-payTime
+    #         seconds = diffTime.seconds
+    #         if seconds <= 900:
+    #             #close gate and show no available car slot
+    #             addHistory(carInside, nowTime)
+    #             deleteCarInside(car_number)
+    #             if os.path.exists(file_name):
+    #                 os.remove(file_name)
+    #         else:
+    #             print("")
+    return res
+def slotSearch():
+    slot = 0
+    #get total cat slots
+    myobj = {'func': 'slot_search'}
+    x = requests.get(url, params = myobj)
+    try:
+        data = json.loads(x.text)
+        if len(data) > 0:
+            data = list(data)
+            slot_data = data[0]
+            slot = slot + int(slot_data['car_slot'])
+            slot = slot + int(slot_data['pregnant_slot'])
+            slot = slot + int(slot_data['disabled_slot'])
+            slot = slot + int(slot_data['charging_slot'])
+            slot = slot + int(slot_data['reserved_slot'])
+        else:
+            return 0
+    except json.JSONDecodeError:
+        return 0
+    #get number of cars inside
+    myobj = {'func': 'cars_inside_count'}
+    x = requests.get(url, params = myobj)
+    try:
+        data = json.loads(x.text)
+        if len(data) > 0:
+            data = list(data)
+            cars_inside = data[0]
+            slot = slot - int(cars_inside['COUNT(*)'])
+        else:
+            return 0
+    except json.JSONDecodeError:
+        return 0
+    return slot
 
-def run(server_class=http.server.HTTPServer, handler_class=MyHandler, port=8080):
+def isCarInside(car_number):
+    data = getCarInside(car_number)
+
+    if data is not None:
+        return True
+    else:
+        return False
+    
+def getCarInside(car_number):
+    myobj = {'func': 'cars_inside_with_car_number'}
+    myobj["car_number"] = car_number
+    x = requests.get(url, params = myobj)
+    data = json.loads(x.text)
+
+    if len(data) > 0:
+        data = list(data)
+        slot_data = data[0]
+        return slot_data
+    else:
+        return None
+    
+def addCarInside(car_number, gate, picture_url,type,color):
+    now = datetime.now()
+    time_in = now.strftime("%Y-%m-%d %H:%M:%S")
+    myobj = {"Response_AlarmInfoPlate":{}}
+    myobj["car_number"] = car_number
+    myobj["time_in"] = time_in
+    myobj["gate"] = gate
+    myobj["picture_url"] = picture_url
+    myobj["type"] = type
+    myobj["color"] = color
+    x = requests.post(url + "?func=cars_inside_add", data = myobj)
+    
+def deleteCarInside(car_number):
+    myobj = {'func': 'cars_inside_delete'}
+    myobj["car_number"] = car_number
+    x = requests.get(url, params = myobj)
+
+def addHistory(car_data, time_out):
+    myobj = {'func': 'cars_inside_delete'}
+    myobj["car_number"] = car_data["car_number"]
+    myobj["time_in"] = car_data["time_in"]
+    myobj["time_out"] = time_out
+    myobj["time_pay"] = car_data["time_pay"]
+    myobj["cost"] = car_data["cost"]
+    myobj["bill_number"] = car_data["bill_number"]
+    myobj["payment"] = car_data["payment"]
+    myobj["artificial"] = car_data["artificial"]
+    myobj["type"] = car_data["type"]
+    myobj["color"] = car_data["color"]
+    x = requests.get(url, params = myobj)
+    
+def getIpCam(ip):
+    myobj = {'func': 'cam_single_search'}
+    myobj["ip"] = ip
+    x = requests.get(url, params = myobj)
+    data = json.loads(x.text)
+
+    if len(data) > 0:
+        data = list(data)
+        cam = data[0]
+        return cam
+    else:
+        return None
+    
+
+def run(server_class=http.server.HTTPServer, handler_class=MyHandler, port=8081):
     logging.basicConfig(level=logging.INFO)
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
     logging.info("Starting httpd on port %d...", port)
     httpd.serve_forever()
+
+url = 'http://localhost:8080/function.php'
 
 if __name__ == "__main__":
     run()
