@@ -84,44 +84,54 @@ def check_car(data):
     #     with open(file_name, "wb") as fh:
     #         fh.write(base64.decodebytes(str.encode(image_string)))
     # get ip cam data
-    cam = getIpCam("192.168.5.5")
-    cam_in_out = cam["in_out"]
+    cam = getIpCam(ip)
+    cam_in_out = 0
+    if("in_out" in cam):
+        cam_in_out = cam["in_out"]
     carInside = getCarInside(car_number)
     
-    if carInside is None:
+    # if carInside is None:
+    #     #add new car and open gate
+    #     if os.path.exists(file_name):
+    #         os.remove(file_name)
+    #     with open(file_name, "wb") as fh:
+    #         fh.write(base64.decodebytes(str.encode(image_string)))
+    #     addCarInside(car_number, "A", file_name, size, color)
+    # else:
+    #     deleteCarInside(car_number)
+    if cam_in_out == "0":
+        available = slotSearch()
+        if available > 0 and carInside is None:
             #add new car and open gate
             if os.path.exists(file_name):
                 os.remove(file_name)
             with open(file_name, "wb") as fh:
                 fh.write(base64.decodebytes(str.encode(image_string)))
             addCarInside(car_number, "A", file_name, size, color)
+        else:
+            res["Response_AlarmInfoPlate"]["info"] = "no"
     else:
-        deleteCarInside(car_number)
-    # if cam_in_out == "0":
-    #     available = slotSearch()
-    #     if available > 0 and carInside is None:
-    #         #add new car and open gate
-    #         if os.path.exists(file_name):
-    #             os.remove(file_name)
-    #         with open(file_name, "wb") as fh:
-    #             fh.write(base64.decodebytes(str.encode(image_string)))
-    #         addCarInside(car_number, "A", file_name, size, color)
-    # else:
-    #     deleteCarInside(car_number)
-    #     if carInside is not None and carInside["time_pay"] is not None:
-    #         time_pay = carInside["time_pay"]
-    #         nowTime = datetime.now()
-    #         payTime = datetime.strptime(time_pay, "%Y-%m-%d %H:%M:%S")
-    #         diffTime = nowTime-payTime
-    #         seconds = diffTime.seconds
-    #         if seconds <= 900:
-    #             #close gate and show no available car slot
-    #             addHistory(carInside, nowTime)
-    #             deleteCarInside(car_number)
-    #             if os.path.exists(file_name):
-    #                 os.remove(file_name)
-    #         else:
-    #             print("")
+        if carInside is not None:
+            nowTime = datetime.now()
+            deleteCarInside(car_number)
+            if os.path.exists(file_name):
+                os.remove(file_name)
+        # if carInside is not None and carInside["time_pay"] is not None:
+        #     time_pay = carInside["time_pay"]
+        #     nowTime = datetime.now()
+        #     payTime = datetime.strptime(time_pay, "%Y-%m-%d %H:%M:%S")
+        #     diffTime = nowTime-payTime
+        #     seconds = diffTime.seconds
+        #     if seconds <= 900:
+        #         #close gate and show no available car slot
+        #         addHistory(carInside, nowTime)
+        #         deleteCarInside(car_number)
+        #         if os.path.exists(file_name):
+        #             os.remove(file_name)
+        #     else:
+        #         res["Response_AlarmInfoPlate"]["info"] = "no"
+        else:
+            res["Response_AlarmInfoPlate"]["info"] = "no"
     return res
 def slotSearch():
     slot = 0

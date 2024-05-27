@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS `company_info` (
 --
 
 INSERT INTO `company_info` (`id`, `lot_name`, `company_name`, `company_address`, `company_phone`, `server_token`, `cht_chat_id`, `standby_path`, `standby_sec`, `auto_upload_server`, `standby_play`) VALUES
-(1, '鳳山保華', '北將科技', '台中市', '1', '2', '3', '4', 5, 1, 1);
+(1, 'BoaHwua', 'ParkJohn Tech', 'Taichung', '1', '2', '3', '4', 5, 1, 1);
 
 -- --------------------------------------------------------
 
@@ -244,7 +244,7 @@ CREATE TABLE IF NOT EXISTS `ip_cam` (
 --
 
 INSERT INTO `ip_cam` (`name`, `ip`, `in_out`, `pay`, `open`, `number`) VALUES
-('保華路OUT', '192.168.51.10', 0, 1, 0, 0);
+('BoaHwua OUT', '192.168.51.10', 0, 1, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -303,8 +303,7 @@ CREATE TABLE IF NOT EXISTS `user` (
 --
 
 INSERT INTO `user` (`account`, `password`, `name`, `phone`, `permission`) VALUES
-('parkjohn', '123456', '美花王', '09123456789', 'A'),
-('admin1', '1234567', '張鳳山', '09108888', 'B');
+('parkjohn', '123456', 'john', '09123456789', 'A');
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
