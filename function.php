@@ -652,6 +652,14 @@ function carInsideAdd($query)
     return $query;
 }
 
+function carImage($query)
+{
+    $path = $_GET['path'];
+    $file_contents = file_get_contents($path);
+    $image_base64Data = base64_encode($file_contents);
+    return $image_base64Data;
+}
+
 $func = $_GET['func'];
 $query = '';
 $output = true;
@@ -859,25 +867,34 @@ if($conn){
             $query = feeUpdate($query);
             $output = false;
             break;
+        //讀取並傳送圖片
+        case 'get_car_image':
+            $query = carImage($query);
+            break;
         default:
             # code...
             break;
     }
     
     if(!(empty($query))){
-        $result = mysqli_query($conn,$query);
-        if($output){
-            $jsonData = array();
-            while ($row = $result->fetch_assoc()) {
-                $jsonData[] = $row;
-            }
-            echo json_encode($jsonData);
-    
-            // $row = $result->fetch_assoc();//拿資料
-            // echo json_encode($row);
+        if($func == 'get_car_image'){
+            echo $query;
         }else{
-            echo '';
+            $result = mysqli_query($conn,$query);
+            if($output){
+                $jsonData = array();
+                while ($row = $result->fetch_assoc()) {
+                    $jsonData[] = $row;
+                }
+                echo json_encode($jsonData);
+        
+                // $row = $result->fetch_assoc();//拿資料
+                // echo json_encode($row);
+            }else{
+                echo '';
+            }
         }
+        
     }
     else {
         echo "不正確連接資料庫</br>" . mysqli_connect_error();

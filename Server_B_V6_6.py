@@ -78,25 +78,25 @@ def check_car(data):
 			    "serialData": []
 		        }
 	        }
-    if os.path.exists(file_name):
-        os.remove(file_name)
-    else:
-        with open(file_name, "wb") as fh:
-            fh.write(base64.decodebytes(str.encode(image_string)))
-    #get ip cam data
-    # cam = getIpCam("192.168.5.5")
-    # cam_in_out = cam["in_out"]
-    # carInside = getCarInside(car_number)
-    
-# if carInside is None:
-    #         #add new car and open gate
-    #         if os.path.exists(file_name):
-    #             os.remove(file_name)
-    #         with open(file_name, "wb") as fh:
-    #             fh.write(base64.decodebytes(str.encode(image_string)))
-    #         addCarInside(car_number, "A", file_name, size, color)
+    # if os.path.exists(file_name):
+    #     os.remove(file_name)
     # else:
-    #     deleteCarInside(car_number)
+    #     with open(file_name, "wb") as fh:
+    #         fh.write(base64.decodebytes(str.encode(image_string)))
+    # get ip cam data
+    cam = getIpCam("192.168.5.5")
+    cam_in_out = cam["in_out"]
+    carInside = getCarInside(car_number)
+    
+    if carInside is None:
+            #add new car and open gate
+            if os.path.exists(file_name):
+                os.remove(file_name)
+            with open(file_name, "wb") as fh:
+                fh.write(base64.decodebytes(str.encode(image_string)))
+            addCarInside(car_number, "A", file_name, size, color)
+    else:
+        deleteCarInside(car_number)
     # if cam_in_out == "0":
     #     available = slotSearch()
     #     if available > 0 and carInside is None:
