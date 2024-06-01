@@ -1,7 +1,7 @@
 <?php
   $server_name = 'localhost';
   $username = 'root';
-  $password = '';
+  $password = 'root';
   $db_name = 'parking_lots';
 
   // mysqli 的四個參數分別為：伺服器名稱、帳號、密碼、資料庫名稱
