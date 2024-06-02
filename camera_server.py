@@ -5,6 +5,9 @@ import requests
 import base64
 import os
 from datetime import datetime
+import time
+import threading
+import numpy as np
 
 class IpCam:
     name = ""
@@ -42,31 +45,105 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
     def handle_request(self, data):
         if "AlarmInfoPlate" in data:
             response = check_car(data)
-            # res = {
-		    # "Response_AlarmInfoPlate": {
-			#     "info": "ok",
-			#     "content": "retransfer_stop",
-			#     "is_pay": "true",
-			#     "serialData": []
-		    #     }
-	        # }
         elif "heartbeat" in data:
-            response = {"status": "received"}
+            response = getHeartbeatResponse(data)
         elif "AlarmGioIn" in data:
-            response = {"status": "received"}
+            response = handleGioData(data)
         elif "SerialData" in data:
-            response = {"status": "received"}
+            respone = getSerialDataResponse(data)
         
         return response
+#waiting Gio0 be triggered and add car data to queue
+def waitForGio0Triggered(in_out, data):
+    for i in np.arange(0, 10 , 0.05):
+        if in_out == "0":
+            if carInGio0 == "0":
+                carInQueue.append(data)
+                inNeedToOpen = True
+                waitForGio1Triggered(in_out)
+                break
+        else:
+            if carOutGio0 == "0":
+                outNeedToOpen = True
+                carOutQueue.append(data)
+                waitForGio1Triggered(in_out)
+                break
+def waitForGio1Triggered(in_out):
+    needPop = True
+    for i in np.arange(0, 20 , 0.05):
+        if in_out == "0":
+            if carInGio1 == "0":
+                updateCarInside()
+                needPop = False
+                break
+        else:
+            if carOutGio1 == "0":
+                updateHistory()
+                needPop = False
+                break
+    if needPop:
+        if in_out == "0":
+            carInQueue.pop(0)
+        else:
+            carOutQueue.pop(0)
+def getHeartbeatResponse(data):
+    res = ""
+    ip = ""
+    #check if need to open the gate from SQL database
+    cam = getIpCam(ip)
+    if cam is None:
+        return res
+    cam_in_out = "0"
+    if "in_out" in cam:
+        cam_in_out = cam["in_out"]
+    if "open" in cam:
+        open = cam["open"]
+        #update cam with gate close
+        updateCam(ip)
+    if cam_in_out == "0":
+        inNeedToOpen = inNeedToOpen or open == "1"
+        if inNeedToOpen:
+            print()
+            inNeedToOpen = False
+    else:
+        outNeedToOpen = outNeedToOpen or open == "1"
+        if outNeedToOpen:
+            print()
+            outNeedToOpen = False
+    return res
+def handleGioData(data):
+    res = ""
+    ip = ""
+    cam = getIpCam(ip)
+    if cam is None:
+        return res
+    cam_in_out = "0"
+    if("in_out" in cam):
+        cam_in_out = cam["in_out"]
+    if cam_in_out == "0":
+        carInGio0 = "0"
+        if(carInGio0 == "0" and len(carInQueue) > 0):
+            print()
+            
+        if(carInGio1 == "0" and len(carInQueue) > 0):
+            print()
+    else:
+        carOutGio0 = "0"
+        if(carOutGio0 == "0" and len(carInQueue) > 0):
+            print()
+        if(carOutGio1 == "0" and len(carInQueue) > 0):
+            print()
+    return res
+def getSerialDataResponse(data):
+    ret = ""
+    ip = data["SerialData"]["ipaddr"]
+    if ip in serialDataToSend:
+        serial0 = serialDataToSend[ip]["0"]
+        serial1 = serialDataToSend[ip]["1"]
+    return ret
+def checkServerNeedToOpen(ip):
+    return False
 def check_car(data):
-    #car detailed data
-    reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
-    ip = data["AlarmInfoPlate"]["ipaddr"]
-    size = "0"
-    color = reselt["carColor"]
-    image_string = reselt["imageFile"]
-    car_number = reselt["license"]
-    file_name = "/storage/sdcard/Cars/" + car_number + ".png"
     # response for picture
     res ={
         "Response_AlarmInfoPlate": {
@@ -76,64 +153,110 @@ def check_car(data):
             "serialData": []
             }
         }
-    # if os.path.exists(file_name):
-    #     os.remove(file_name)
-    # else:
-    #     with open(file_name, "wb") as fh:
-    #         fh.write(base64.decodebytes(str.encode(image_string)))
+    #car detailed data
+    reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
+    ip = data["AlarmInfoPlate"]["ipaddr"]
+    car_number = reselt["license"]
     # get ip cam data
     cam = getIpCam(ip)
-    cam_in_out = 0
+    if cam is None:
+        return res
+    cam_in_out = "0"
     if("in_out" in cam):
         cam_in_out = cam["in_out"]
-    carInside = getCarInside(car_number)
     if cam_in_out == "0":
-        available = slotSearch()
-        if available > 0 and carInside is None:
-            #add new car and open gate
-            if os.path.exists(file_name):
-                os.remove(file_name)
-            with open(file_name, "wb") as fh:
-                fh.write(base64.decodebytes(str.encode(image_string)))
-            addCarInside(car_number, "A", file_name, size, color)
+        if checkCanIn():
+            if(carInGio0 is not "0"):
+                #gio0 in is not triggered
+                waitForGio0Triggered(cam_in_out, data)
+                return res
+            carInQueue.append(data)
+            waitForGio1Triggered(cam_in_out)
             #add serial0 data to WELCOME XXXXXXX
             setWelcomeSerialData(ip)
             setCarNumberSerialData(ip, car_number, "0")
-            #add serial1 data to update slots number
-            setCarSlotsBig()
+            res["Response_AlarmInfoPlate"]["info"] = "ok"
         else:
             res["Response_AlarmInfoPlate"]["info"] = "no"
             #add serial0 data to full and wait
             setCarSlotsSmall(0)
     else:
-        # if carInside is not None:
-        #     deleteCarInside(car_number)
-        #     if os.path.exists(file_name):
-        #         os.remove(file_name)
-        if carInside is not None and carInside["time_pay"] is not None:
-            time_pay = carInside["time_pay"]
-            nowTime = datetime.now()
-            payTime = datetime.strptime(time_pay, "%Y-%m-%d %H:%M:%S")
-            diffTime = nowTime-payTime
-            seconds = diffTime.seconds
-            if seconds <= 900:
-                #close gate and show no available car slot
-                addHistory(carInside, nowTime)
-                deleteCarInside(car_number)
-                if os.path.exists(file_name):
-                    os.remove(file_name)
-                #add serial0 data to THANK U XXXXXXX
-                setThankUSerialData(ip)
-                setCarNumberSerialData(ip, car_number, "0")
-                #add serial1 data to update slots number
-            else:
-                res["Response_AlarmInfoPlate"]["info"] = "no"
-                #add serial0 data to need to pay
-                setNeedToPay(ip)
-                setCarNumberSerialData(ip, car_number, "0")
+        if checkCanOut(data):
+            if(carInGio1 is not "0"):
+                #gio0 out is not triggered
+                waitForGio0Triggered(cam_in_out, data)
+                return res
+            carOutQueue.append(data)
+            waitForGio1Triggered(cam_in_out)
+            res["Response_AlarmInfoPlate"]["info"] = "ok"
         else:
             res["Response_AlarmInfoPlate"]["info"] = "no"
+            #add serial0 data to need to pay
+            setNeedToPay(ip)
+            setCarNumberSerialData(ip, car_number, "0")
     return res
+
+def updateCarInside():
+    data = carOutQueue.pop(0)
+    reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
+    size = "0"
+    color = reselt["carColor"]
+    image_string = reselt["imageFile"]
+    car_number = reselt["license"]
+    file_name = "/storage/sdcard/Cars/" + car_number + ".png"
+    #add new car and open gate
+    if os.path.exists(file_name):
+        os.remove(file_name)
+    with open(file_name, "wb") as fh:
+        fh.write(base64.decodebytes(str.encode(image_string)))
+    addCarInside(car_number, "A", file_name, size, color)
+
+def updateHistory():
+    data = carOutQueue.pop(0)
+    reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
+    car_number = reselt["license"]
+    image_string = reselt["imageFile"]
+    file_name = "/storage/sdcard/Cars/" + car_number + ".png"
+    backup_file_name = "/storage/sdcard/Cars_backup/" + nowTime.strftime("%Y_%m_%d_%H_%M_%S") + "_" + car_number + ".png"
+    carInside = getCarInside(car_number)
+    #close gate and show no available car slot
+    addHistory(carInside, nowTime)
+    deleteCarInside(car_number)
+    if os.path.exists(file_name):
+        os.remove(file_name)
+    with open(backup_file_name, "wb") as fh:
+        fh.write(base64.decodebytes(str.encode(image_string)))
+def checkCanIn(data):
+    ret = False
+    #car detailed data
+    reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
+    ip = data["AlarmInfoPlate"]["ipaddr"]
+    size = "0"
+    color = reselt["carColor"]
+    image_string = reselt["imageFile"]
+    car_number = reselt["license"]
+    file_name = "/storage/sdcard/Cars/" + car_number + ".png"
+    carInside = getCarInside(car_number)
+    available = slotSearch()
+    if available > 0 and carInside is None:
+        ret = True
+    return ret
+
+def checkCanOut(data):
+    ret = False
+    #car detailed data
+    reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
+    car_number = reselt["license"]
+    carInside = getCarInside(car_number)
+    if carInside is not None and carInside["time_pay"] is not None:
+        time_pay = carInside["time_pay"]
+        nowTime = datetime.now()
+        payTime = datetime.strptime(time_pay, "%Y-%m-%d %H:%M:%S")
+        diffTime = nowTime-payTime
+        seconds = diffTime.seconds
+        if seconds <= 900:
+            ret = True
+    return ret
 def slotSearch():
     slot = 0
     #get total cat slots
@@ -233,9 +356,17 @@ def getIpCam(ip):
         return cam
     else:
         return None
+def updateCam(ip):
+    #update cam open status on SQL
+    print()
 def setCams(ip):
     if ip not in serialDataToSend:
         serialDataToSend[ip]={
+            "0":[],
+            "1":[]
+        }
+    if ip not in heartbeatToSend:
+        heartbeatToSend[ip]={
             "0":[],
             "1":[]
         }
@@ -263,7 +394,7 @@ def setThankUSerialData(ip):
         serialDataToSend[ip]["0"] = []
     serialDataToSend[ip]["0"].append(getBase64String(serial_data))
         
-def setCarSlotsBig(number):
+def setCarSlotsBig(ip, number):
     P_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x14 ,0x00 ,0x20 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x32 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
     for ip in serialDataToSend:
         serialDataToSend[ip]["0"].append(getBase64String(P_data))
@@ -333,8 +464,19 @@ def run(server_class=http.server.HTTPServer, handler_class=MyHandler, port=8081)
     httpd = server_class(server_address, handler_class)
     logging.info("Starting httpd on port %d...", port)
     httpd.serve_forever()
-    
+#initialize variables    
 url = 'http://localhost:8080/function.php'
-serialDataToSend = {}
+inNeedToOpen = False
+outNeedToOpen = False
+serialDataToSend = {} #Data Queue to send to LED
+heartbeatToSend = {}
+carInQueue = [] #Car Info Queue waiting for alarm 
+carOutQueue = [] #Car Info Queue waiting for alarm 
+carInGio0 = "1" #Camera In  Gio0 status
+carInGio1 = "1" #Camera In  Gio1 status
+carOutGio0 = "1" #Camera Out  Gio0 status
+carOutGio1 = "1" #Camera Out  Gio1 status
+nowTime = datetime.now()
+# threading.Thread(target=sleepJob(3)).start()
 if __name__ == "__main__":
     run()
