@@ -295,6 +295,15 @@ function camUpdate($query)
     );
     return $query;
 }
+function camUpdateOpen($query)
+{
+    $query = sprintf(
+        "UPDATE `ip_cam` SET  `open`='%d' WHERE `ip` = '%s'",
+        $_GET['open'],
+        $_GET['ip']
+    );
+    return $query;
+}
 function holidaySingleSearch($query)
 {
     $date = '';
@@ -492,15 +501,18 @@ function ecpayUpdate($query)
     if (!empty($_GET['hash_iv'])) {
         $hash_iv = $_GET['hash_iv'];
     }
-
+    if (!empty($_GET['machine_id'])) {
+        $machine_id = $_GET['machine_id'];
+    }
     $query = sprintf(
-        "UPDATE `ecpay` SET `print_status` = '%d', `plus_car_number` = '%d', `merchant_id` = '%s', `company_id` = '%s', `hash_key` = '%s', `hash_iv` = '%s' WHERE `ecpay`.`id` = 1",
+        "UPDATE `ecpay` SET `print_status` = '%d', `plus_car_number` = '%d', `merchant_id` = '%s', `company_id` = '%s', `hash_key` = '%s', `hash_iv` = '%s', `machine_id` = '%s' WHERE `ecpay`.`id` = 1",
         $print_status,
         $plus_car_number,
         $merchant_id,
         $company_id,
         $hash_key,
-        $hash_iv
+        $hash_iv,
+        $machine_id
     );
 
     return $query;
@@ -713,6 +725,11 @@ if($conn){
         //修改CAM
         case 'cam_update':
             $query = camUpdate($query);
+            $output = false;
+            break;
+        //修改CAM開啟狀態
+        case 'cam_update_open':
+            $query = camUpdateOpen($query);
             $output = false;
             break;
         //新增CAM

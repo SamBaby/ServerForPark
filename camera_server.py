@@ -9,12 +9,17 @@ import time
 import threading
 import numpy as np
 
-class IpCam:
-    name = ""
-    ip = ""
-    in_out = False
-    pay = False
-    open = False
+class camStatus:
+    inNeedToOpen = False
+    outNeedToOpen = False
+    serialDataToSend = {} #Data Queue to send to LED
+    heartbeatToSend = {}
+    carInQueue = [] #Car Info Queue waiting for alarm 
+    carOutQueue = [] #Car Info Queue waiting for alarm 
+    carInGio0 = "1" #Camera In  Gio0 status
+    carInGio1 = "1" #Camera In  Gio1 status
+    carOutGio0 = "1" #Camera Out  Gio0 status
+    carOutGio1 = "1" #Camera Out  Gio1 status
 class MyHandler(http.server.BaseHTTPRequestHandler):
     AlarmInfoPlate = "AlarmInfoPlate"
     AlarmGioIn = "AlarmGioIn"
@@ -23,11 +28,12 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
     Response_AlarmInfoPlate = "Response_AlarmInfoPlate"
     Response_SerialData = "Response_SerialData"
     Response_Heartbeat = "Response_Heartbeat"
-
+        
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
         try:
+            setCams(self.client_address[0])
             data = json.loads(post_data)
             response = self.handle_request(data)
         except json.JSONDecodeError:
@@ -46,49 +52,73 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         if "AlarmInfoPlate" in data:
             response = check_car(data)
         elif "heartbeat" in data:
-            response = getHeartbeatResponse(data)
+            response = getHeartbeatResponse(self.client_address[0])
         elif "AlarmGioIn" in data:
             response = handleGioData(data)
         elif "SerialData" in data:
-            respone = getSerialDataResponse(data)
+            response = getSerialDataResponse(data)
+            print("SerialData")
         
         return response
+    
+    # def log_message(self, format, *args):
+    #     pass
 #waiting Gio0 be triggered and add car data to queue
-def waitForGio0Triggered(in_out, data):
+def waitForGio0Triggered(in_out, data, ip, car_number):
     for i in np.arange(0, 10 , 0.05):
         if in_out == "0":
-            if carInGio0 == "0":
-                carInQueue.append(data)
-                inNeedToOpen = True
-                waitForGio1Triggered(in_out)
+            if cam_status.carInGio0 == "0":
+                cam_status.carInQueue.append(data)
+                cam_status.inNeedToOpen = True
+                waitForGio1Triggered(in_out, ip)
+                cleanLEDSerialData(cam_status.heartbeatToSend[ip]["0"])
+                setWelcomeSerialData(ip)
+                setCarNumberSerialData(ip, car_number)
                 break
         else:
-            if carOutGio0 == "0":
-                outNeedToOpen = True
-                carOutQueue.append(data)
-                waitForGio1Triggered(in_out)
+            if cam_status.carOutGio0 == "0":
+                cam_status.outNeedToOpen = True
+                cam_status.carOutQueue.append(data)
+                #set thank u to XXXXXXX
+                cleanLEDSerialData(cam_status.heartbeatToSend[ip]["0"])
+                setThankUSerialData(ip)
+                setCarNumberSerialData(ip, car_number)
+                waitForGio1Triggered(in_out, ip)
                 break
-def waitForGio1Triggered(in_out):
+def waitForGio1Triggered(in_out, ip):
     needPop = True
     for i in np.arange(0, 20 , 0.05):
         if in_out == "0":
-            if carInGio1 == "0":
+            if cam_status.carInGio1 == "0":
                 updateCarInside()
+                cleanLEDSerialData(cam_status.heartbeatToSend[ip]["0"])
+                setCarSlotsBig(ip)
+                setCarSlotsSmall(ip)
                 needPop = False
                 break
         else:
-            if carOutGio1 == "0":
+            if cam_status.carOutGio1 == "0":
                 updateHistory()
+                cleanLEDSerialData(cam_status.heartbeatToSend[ip]["0"])
+                setCarSlotsBig(ip)
+                setOutNormalScreen(ip)
                 needPop = False
                 break
+    # GIO1 not triggered, dispose data
     if needPop:
         if in_out == "0":
-            carInQueue.pop(0)
+            cam_status.carInQueue.pop(0)
         else:
-            carOutQueue.pop(0)
-def getHeartbeatResponse(data):
-    res = ""
-    ip = ""
+            cam_status.carOutQueue.pop(0)
+def getHeartbeatResponse(ip):
+    res = {
+        "Response_Heartbeat": {
+            "info": "no",
+            "serialData": [],
+            "shutoff": "no",
+            "snapnow": "no"
+            }
+    }
     #check if need to open the gate from SQL database
     cam = getIpCam(ip)
     if cam is None:
@@ -99,105 +129,147 @@ def getHeartbeatResponse(data):
     if "open" in cam:
         open = cam["open"]
         #update cam with gate close
-        updateCam(ip)
+        updateCamNotToOpen(ip)
     if cam_in_out == "0":
-        inNeedToOpen = inNeedToOpen or open == "1"
-        if inNeedToOpen:
-            print()
-            inNeedToOpen = False
+        cam_status.inNeedToOpen = cam_status.inNeedToOpen or open == "1"
+        if cam_status.inNeedToOpen:
+            cam_status.inNeedToOpen = False
+            res["Response_Heartbeat"]["info"] = "ok"
     else:
-        outNeedToOpen = outNeedToOpen or open == "1"
-        if outNeedToOpen:
-            print()
-            outNeedToOpen = False
+        cam_status.outNeedToOpen = cam_status.outNeedToOpen or open == "1"
+        if cam_status.outNeedToOpen:
+            cam_status.outNeedToOpen = False
+            res["Response_Heartbeat"]["info"] = "ok"
+    #check if heartbeat has serial data
+    if ip in cam_status.heartbeatToSend:
+        if len(cam_status.heartbeatToSend[ip]["0"]) > 0:
+            res["Response_Heartbeat"]["serialData"].append({
+				"serialChannel": 0,
+				"data": cam_status.heartbeatToSend[ip]["0"].pop(0),
+				"dataLen": 38
+			})
+        if len(cam_status.heartbeatToSend[ip]["1"]) > 0:
+            res["Response_Heartbeat"]["serialData"].append({
+				"serialChannel": 1,
+				"data": cam_status.heartbeatToSend[ip]["1"].pop(0),
+				"dataLen": 38
+			})
     return res
 def handleGioData(data):
-    res = ""
-    ip = ""
+    ip = data["AlarmGioIn"]["ipaddr"]
+    serial_num = data["AlarmGioIn"]["result"]["TriggerResult"]["source"]
+    serial_value = serial_num = data["AlarmGioIn"]["result"]["TriggerResult"]["value"]
+    
     cam = getIpCam(ip)
     if cam is None:
-        return res
+        return ""
     cam_in_out = "0"
-    if("in_out" in cam):
+    if "in_out" in cam:
         cam_in_out = cam["in_out"]
     if cam_in_out == "0":
-        carInGio0 = "0"
-        if(carInGio0 == "0" and len(carInQueue) > 0):
-            print()
-            
-        if(carInGio1 == "0" and len(carInQueue) > 0):
-            print()
+        if serial_num == "0":
+            cam_status.carInGio0 = serial_value
+        else:
+            cam_status.carInGio1 = serial_value
     else:
-        carOutGio0 = "0"
-        if(carOutGio0 == "0" and len(carInQueue) > 0):
-            print()
-        if(carOutGio1 == "0" and len(carInQueue) > 0):
-            print()
-    return res
+        if serial_num == "1":
+            cam_status.carOutGio0 = serial_value
+        else:
+            cam_status.carOutGio1 = serial_value
+    return ""
 def getSerialDataResponse(data):
-    ret = ""
+    res = {
+        "Response_SerialData": {
+            "info": "no",
+            "serialData":[
+            ]
+        }
+    }
     ip = data["SerialData"]["ipaddr"]
-    if ip in serialDataToSend:
-        serial0 = serialDataToSend[ip]["0"]
-        serial1 = serialDataToSend[ip]["1"]
-    return ret
-def checkServerNeedToOpen(ip):
-    return False
+    if ip in cam_status.serialDataToSend:
+        if len(cam_status.serialDataToSend[ip]["0"]) > 0:
+            res["Response_SerialData"]["serialData"].append({
+				"serialChannel": 0,
+				"data": cam_status.serialDataToSend[ip]["0"].pop(0),
+				"dataLen": 38
+			})
+        if len(cam_status.serialDataToSend[ip]["1"]) > 0:
+            res["Response_SerialData"]["serialData"].append({
+				"serialChannel": 1,
+				"data": cam_status.serialDataToSend[ip]["1"].pop(0),
+				"dataLen": 38
+			})
+    return res
 def check_car(data):
     # response for picture
-    res ={
-        "Response_AlarmInfoPlate": {
-            "info": "ok",
-            "content": "retransfer_stop",
-            "is_pay": "true",
-            "serialData": []
-            }
-        }
+    res = {
+		    "Response_AlarmInfoPlate": {
+			    "info": "ok",
+			    "content": "retransfer_stop",
+			    "is_pay": "true",
+			    "serialData": [{"serialChannel": 0,	"data": "",	"dataLen": 0}, {"serialChannel": 1,	"data": "",	"dataLen": 0}]
+		        }
+	        }
     #car detailed data
     reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
     ip = data["AlarmInfoPlate"]["ipaddr"]
     car_number = reselt["license"]
+    # res["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
+    # res["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
+    # setNeedToPay(ip)
+    # setCarNumberSerialData(ip, car_number)
     # get ip cam data
     cam = getIpCam(ip)
     if cam is None:
         return res
     cam_in_out = "0"
-    if("in_out" in cam):
+    if "in_out" in cam:
         cam_in_out = cam["in_out"]
     if cam_in_out == "0":
         if checkCanIn():
-            if(carInGio0 is not "0"):
+            if cam_status.carInGio0 != "0":
                 #gio0 in is not triggered
-                waitForGio0Triggered(cam_in_out, data)
+                waitForGio0Triggered(cam_in_out, data, ip, car_number)
                 return res
-            carInQueue.append(data)
-            waitForGio1Triggered(cam_in_out)
+            cam_status.carInQueue.append(data)
+            waitForGio1Triggered(cam_in_out, ip)
             #add serial0 data to WELCOME XXXXXXX
+            res["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
+            res["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
             setWelcomeSerialData(ip)
-            setCarNumberSerialData(ip, car_number, "0")
+            setCarNumberSerialData(ip, car_number)
             res["Response_AlarmInfoPlate"]["info"] = "ok"
         else:
             res["Response_AlarmInfoPlate"]["info"] = "no"
             #add serial0 data to full and wait
-            setCarSlotsSmall(0)
+            res["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
+            res["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
+            setCarSlotsSmall(ip)
     else:
         if checkCanOut(data):
-            if(carInGio1 is not "0"):
+            if cam_status.carInGio1 != "0":
                 #gio0 out is not triggered
-                waitForGio0Triggered(cam_in_out, data)
+                waitForGio0Triggered(cam_in_out, data, ip, car_number)
                 return res
-            carOutQueue.append(data)
-            waitForGio1Triggered(cam_in_out)
+            cam_status.carOutQueue.append(data)
+            waitForGio1Triggered(cam_in_out, ip)
+            #set thank u to XXXXXXX
+            res["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
+            res["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
+            setThankUSerialData(ip)
+            setCarNumberSerialData(ip, car_number)
             res["Response_AlarmInfoPlate"]["info"] = "ok"
         else:
             res["Response_AlarmInfoPlate"]["info"] = "no"
             #add serial0 data to need to pay
+            res["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
+            res["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
             setNeedToPay(ip)
-            setCarNumberSerialData(ip, car_number, "0")
+            setCarNumberSerialData(ip, car_number)
     return res
 
 def updateCarInside():
-    data = carOutQueue.pop(0)
+    data = cam_status.carOutQueue.pop(0)
     reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
     size = "0"
     color = reselt["carColor"]
@@ -212,7 +284,7 @@ def updateCarInside():
     addCarInside(car_number, "A", file_name, size, color)
 
 def updateHistory():
-    data = carOutQueue.pop(0)
+    data = cam_status.carOutQueue.pop(0)
     reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
     car_number = reselt["license"]
     image_string = reselt["imageFile"]
@@ -352,31 +424,43 @@ def getIpCam(ip):
     if len(data) > 0:
         data = list(data)
         cam = data[0]
-        setCams(ip)
         return cam
     else:
         return None
-def updateCam(ip):
+def getIpCams():
+    myobj = {'func': 'cam_search'}
+    x = requests.get(url, params = myobj)
+    data = json.loads(x.text)
+
+    if len(data) > 0:
+        data = list(data)
+        return data
+    else:
+        return None
+def updateCamNotToOpen(ip):
     #update cam open status on SQL
-    print()
+    myobj = {'func': 'cam_update_open'}
+    myobj["ip"] = ip
+    myobj["open"] = 0
+    x = requests.get(url, params = myobj)
 def setCams(ip):
-    if ip not in serialDataToSend:
-        serialDataToSend[ip]={
+    if ip not in cam_status.serialDataToSend:
+        cam_status.serialDataToSend[ip]={
             "0":[],
             "1":[]
         }
-    if ip not in heartbeatToSend:
-        heartbeatToSend[ip]={
+    if ip not in cam_status.heartbeatToSend:
+        cam_status.heartbeatToSend[ip]={
             "0":[],
             "1":[]
         }
    
 def setWelcomeSerialData(ip):
     serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x00 ,0x12 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x36 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
-    serialDataToSend[ip]["0"].append(getBase64String(serial_data))
+    cam_status.serialDataToSend[ip]["0"].append(getBase64String(serial_data))
     
     
-def setCarNumberSerialData(ip, car_number, port):
+def setCarNumberSerialData(ip, car_number):
     for i in range(len(car_number)):
         serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x10 ,0x00 ,0x08 ,0x00 ,0x10 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x01 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
         serial_data[12] = i*8
@@ -384,50 +468,54 @@ def setCarNumberSerialData(ip, car_number, port):
             serial_data[32] = string_to_int_small(car_number[i])
         else:
             serial_data[32] = char_to_int(car_number[i])
-        serialDataToSend[ip][port].append(getBase64String(serial_data))
+        cam_status.serialDataToSend[ip]["0"].append(getBase64String(serial_data))
         
 def setThankUSerialData(ip):
     serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x00 ,0x12 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x37 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
-    if ip not in serialDataToSend:
-        serialDataToSend[ip] ={}
-    if "0" not in serialDataToSend[ip]:
-        serialDataToSend[ip]["0"] = []
-    serialDataToSend[ip]["0"].append(getBase64String(serial_data))
+    cam_status.serialDataToSend[ip]["0"].append(getBase64String(serial_data))
         
-def setCarSlotsBig(ip, number):
+def setCarSlotsBig(ip):
+    available = slotSearch()
     P_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x14 ,0x00 ,0x20 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x32 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
-    for ip in serialDataToSend:
-        serialDataToSend[ip]["0"].append(getBase64String(P_data))
-    if number > 0:
-        format_number = '{:03d}'.format(number)
+    for ip in cam_status.serialDataToSend:
+        cam_status.serialDataToSend[ip]["1"].append(getBase64String(P_data))
+    if available > 0:
+        format_number = '{:03d}'.format(available)
         for i in range(len(format_number)):
             serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x00 ,0x20 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x36 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
             serial_data[12] = 20+i*14
             serial_data[32] = string_to_int_Big(format_number[i])
-            for ip in serialDataToSend:
-                serialDataToSend[ip]["0"].append(getBase64String(serial_data))
+            for ip in cam_status.serialDataToSend:
+                cam_status.serialDataToSend[ip]["1"].append(getBase64String(serial_data))
     else:
         serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x14 ,0x00 ,0x00 ,0x00 ,0x2A ,0x00 ,0x20 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x33 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
-        serialDataToSend[ip]["0"].append(getBase64String(serial_data))
-def setCarSlotsSmall(ip, number):
+        cam_status.serialDataToSend[ip]["1"].append(getBase64String(serial_data))
+def setCarSlotsSmall(ip):
+    number = slotSearch()
     if number > 0:
         P_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x00 ,0x12 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x35 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
-        serialDataToSend[ip]["0"].append(getBase64String(P_data))
+        cam_status.serialDataToSend[ip]["0"].append(getBase64String(P_data))
         format_number = '{:03d}'.format(number)
         for i in range(len(format_number)):
             serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x10 ,0x00 ,0x08 ,0x00 ,0x10 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x36 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
             serial_data[12] = 20+i*8
             serial_data[32] = string_to_int_small(format_number[i])
-            serialDataToSend[ip]["0"].append(getBase64String(serial_data))
+            cam_status.serialDataToSend[ip]["0"].append(getBase64String(serial_data))
     else:
         serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x00 ,0x20 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x3D ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
-        serialDataToSend[ip]["0"].append(getBase64String(serial_data))
+        cam_status.serialDataToSend[ip]["0"].append(getBase64String(serial_data))
 def setNeedToPay(ip):
     serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x00 ,0x12 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x38 ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
-    serialDataToSend[ip]["0"].append(getBase64String(serial_data))
+    cam_status.serialDataToSend[ip]["0"].append(getBase64String(serial_data))
 def setOutNormalScreen(ip):
     serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x00 ,0x20 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x3E ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
-    serialDataToSend[ip]["0"].append(getBase64String(serial_data))
+    cam_status.serialDataToSend[ip]["0"].append(getBase64String(serial_data))
+def cleanLEDSerialData(array):
+    serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x00 ,0x20 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x3C ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
+    array.append(getBase64String(serial_data))
+def getCleanLEDSerialData():
+    serial_data = bytearray([0xaa,0xa5,0x1e,0x00,0x01,0x01 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x40 ,0x00 ,0x20 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x02 ,0x00 ,0x00 ,0x00 ,0x3C ,0x00 ,0x00 ,0x00 ,0x5a ,0x55])
+    return getBase64String(serial_data)
 def getBase64String(bytes):
     encoded_string = base64.b64encode(bytes).decode('utf-8')
     return encoded_string
@@ -458,25 +546,32 @@ def string_to_int_Big(s):
     else:
         raise ValueError("Input should be a digit between '0' and '9'")
 
+def led_init():
+    cams = getIpCams()
+    
+    for cam in cams:
+        ip = cam["ip"]
+        setCams(ip)
+        cleanLEDSerialData(cam_status.heartbeatToSend[ip]["0"])
+        cleanLEDSerialData(cam_status.serialDataToSend[ip]["1"])
+        in_out = cam["in_out"]
+        if in_out == "0":
+            setCarSlotsSmall(ip)
+        else:
+            setOutNormalScreen(ip)
+        setCarSlotsBig(ip)
 def run(server_class=http.server.HTTPServer, handler_class=MyHandler, port=8081):
     logging.basicConfig(level=logging.INFO)
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
     logging.info("Starting httpd on port %d...", port)
     httpd.serve_forever()
+    
 #initialize variables    
 url = 'http://localhost:8080/function.php'
-inNeedToOpen = False
-outNeedToOpen = False
-serialDataToSend = {} #Data Queue to send to LED
-heartbeatToSend = {}
-carInQueue = [] #Car Info Queue waiting for alarm 
-carOutQueue = [] #Car Info Queue waiting for alarm 
-carInGio0 = "1" #Camera In  Gio0 status
-carInGio1 = "1" #Camera In  Gio1 status
-carOutGio0 = "1" #Camera Out  Gio0 status
-carOutGio1 = "1" #Camera Out  Gio1 status
+cam_status = camStatus()
 nowTime = datetime.now()
+led_init()
 # threading.Thread(target=sleepJob(3)).start()
 if __name__ == "__main__":
     run()
