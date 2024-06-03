@@ -6,6 +6,9 @@
 5.echo "deb https://termux.dev/science-packages-21-bin science stable" > $PREFIX/etc/apt/sources.list.d/science.list
 6.pkg upgrade
 7.第一個輸入Y，之後都輸入N
+8.mkdir ./.termux
+9.echo "allow-external-apps=true" > ./.termux/termux.properties"
+10.chmod 777 -R ./.termux/
 
 ***將ServerForPark資料夾底下的檔案複製到sdcard下面***
 camera_server.py/parking_lots.sql/httpd.conf/htdocs

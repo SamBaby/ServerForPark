@@ -269,7 +269,7 @@ def check_car(data):
     return res
 
 def updateCarInside():
-    data = cam_status.carOutQueue.pop(0)
+    data = cam_status.carInQueue.pop(0)
     reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
     size = "0"
     color = reselt["carColor"]
@@ -569,6 +569,10 @@ def run(server_class=http.server.HTTPServer, handler_class=MyHandler, port=8081)
     
 #initialize variables    
 url = 'http://localhost:8080/function.php'
+pic_dir = "/storage/sdcard/Cars"
+backup_dir = "/storage/sdcard/Cars_backup"
+os.makedirs(pic_dir, exist_ok=True)
+os.makedirs(backup_dir, exist_ok=True)
 cam_status = camStatus()
 nowTime = datetime.now()
 led_init()
