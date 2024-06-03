@@ -483,6 +483,7 @@ function ecpayUpdate($query)
     $company_id = '';
     $hash_key = '';
     $hash_iv = '';
+    $machine_id = '';
     if (!empty($_GET['print_status'])) {
         $print_status = $_GET['print_status'];
     }
@@ -663,7 +664,20 @@ function carInsideAdd($query)
 
     return $query;
 }
+function carInsideUpdatePay($query)
+{
+    $query = sprintf(
+        "UPDATE `cars_inside` SET `time_pay` = '%s',`cost` = '%d',`discount` = '%d', `bill_number` = '%s', `payment`= '%s'   WHERE `car_number` = '%s'",
+        $_POST['time_pay'],
+        $_POST['cost'],
+        $_POST['discount'],
+        $_POST['bill_number'],
+        $_POST['payment'],
+        $_POST['car_number']
+    );
 
+    return $query;
+}
 function carImage($query)
 {
     $path = $_GET['path'];
@@ -856,7 +870,7 @@ if($conn){
         case 'cars_inside_dates_inside':
             $query = carInsideDateSearch($query);
             break;
-         //場內車子刪除carInsideAdd
+         //場內車子刪除
         case 'cars_inside_delete':
             $query = carInsideDelete($query);
             $output = false;
@@ -864,6 +878,11 @@ if($conn){
         //場內車子新增
         case 'cars_inside_add':
             $query = carInsideAdd($query);
+            $output = false;
+            break;
+        //場內車子付款資料更新
+        case 'cars_inside_update':
+            $query = carInsideUpdatePay($query);
             $output = false;
             break;
         //基本設置查詢

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： 127.0.0.1:3306
--- 產生時間： 2024-05-26 09:09:00
+-- 產生時間： 2024-06-03 05:30:48
 -- 伺服器版本： 8.2.0
 -- PHP 版本： 8.2.13
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- 資料庫： `parking_lots`
+-- 資料庫： `test1`
 --
 
 -- --------------------------------------------------------
@@ -56,7 +56,7 @@ INSERT INTO `basic_fee` (`id`, `enter_time_not_count`, `before_one_hour_count`, 
 
 DROP TABLE IF EXISTS `cars_inside`;
 CREATE TABLE IF NOT EXISTS `cars_inside` (
-  `car_number` varchar(20) NOT NULL,
+  `car_number` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `time_in` datetime NOT NULL,
   `time_pay_count` datetime DEFAULT NULL,
   `time_pay` datetime DEFAULT NULL,
@@ -67,8 +67,8 @@ CREATE TABLE IF NOT EXISTS `cars_inside` (
   `payment` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `artificial` tinyint(1) NOT NULL DEFAULT '0',
   `picture_url` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `type` varchar(20) DEFAULT NULL,
-  `color` varchar(20) DEFAULT NULL,
+  `type` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `color` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   UNIQUE KEY `car_number` (`car_number`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -81,13 +81,13 @@ CREATE TABLE IF NOT EXISTS `cars_inside` (
 DROP TABLE IF EXISTS `company_info`;
 CREATE TABLE IF NOT EXISTS `company_info` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `lot_name` varchar(20) DEFAULT NULL,
-  `company_name` varchar(20) DEFAULT NULL,
-  `company_address` varchar(30) DEFAULT NULL,
-  `company_phone` varchar(20) DEFAULT NULL,
-  `server_token` varchar(30) DEFAULT NULL,
-  `cht_chat_id` varchar(30) DEFAULT NULL,
-  `standby_path` varchar(30) DEFAULT NULL,
+  `lot_name` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `company_name` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `company_address` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `company_phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `server_token` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cht_chat_id` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `standby_path` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `standby_sec` int DEFAULT '0',
   `auto_upload_server` tinyint(1) NOT NULL DEFAULT '0',
   `standby_play` tinyint(1) NOT NULL DEFAULT '0',
@@ -99,7 +99,38 @@ CREATE TABLE IF NOT EXISTS `company_info` (
 --
 
 INSERT INTO `company_info` (`id`, `lot_name`, `company_name`, `company_address`, `company_phone`, `server_token`, `cht_chat_id`, `standby_path`, `standby_sec`, `auto_upload_server`, `standby_play`) VALUES
-(1, 'BoaHwua', 'ParkJohn Tech', 'Taichung', '1', '2', '3', '4', 5, 1, 1);
+(1, '鳳山保華', '北將科技', '台中市', '1', '2', '3', '4', 5, 1, 1);
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `coupon_history`
+--
+
+DROP TABLE IF EXISTS `coupon_history`;
+CREATE TABLE IF NOT EXISTS `coupon_history` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `amount` int NOT NULL,
+  `count` int NOT NULL,
+  `deadline` datetime NOT NULL,
+  `user` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mark` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `coupon_list`
+--
+
+DROP TABLE IF EXISTS `coupon_list`;
+CREATE TABLE IF NOT EXISTS `coupon_list` (
+  `id` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `used` tinyint(1) NOT NULL DEFAULT '0',
+  `deadline` datetime NOT NULL,
+  UNIQUE KEY `id` (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -138,10 +169,11 @@ CREATE TABLE IF NOT EXISTS `ecpay` (
   `id` int NOT NULL AUTO_INCREMENT,
   `print_status` int NOT NULL,
   `plus_car_number` tinyint(1) NOT NULL,
-  `merchant_id` varchar(20) NOT NULL,
-  `company_id` varchar(20) NOT NULL,
-  `hash_key` varchar(20) NOT NULL,
-  `hash_iv` varchar(20) NOT NULL,
+  `machine_id` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '1',
+  `merchant_id` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `company_id` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `hash_key` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `hash_iv` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -149,8 +181,8 @@ CREATE TABLE IF NOT EXISTS `ecpay` (
 -- 傾印資料表的資料 `ecpay`
 --
 
-INSERT INTO `ecpay` (`id`, `print_status`, `plus_car_number`, `merchant_id`, `company_id`, `hash_key`, `hash_iv`) VALUES
-(1, 2, 1, '1', '1', '1', '1');
+INSERT INTO `ecpay` (`id`, `print_status`, `plus_car_number`, `machine_id`, `merchant_id`, `company_id`, `hash_key`, `hash_iv`) VALUES
+(1, 2, 1, 'SM01', '3085340', '1', 'HwiqPsywG1hLQNuN', 'YqITWD4TyKacYXpn');
 
 -- --------------------------------------------------------
 
@@ -185,16 +217,16 @@ INSERT INTO `floor` (`id`, `car_slot`, `pregnant_slot`, `disabled_slot`, `chargi
 DROP TABLE IF EXISTS `history`;
 CREATE TABLE IF NOT EXISTS `history` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `car_number` varchar(20) NOT NULL,
+  `car_number` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `time_in` datetime NOT NULL,
   `time_out` datetime NOT NULL,
   `time_pay` datetime DEFAULT NULL,
   `cost` int DEFAULT NULL,
-  `bill_number` varchar(20) DEFAULT NULL,
-  `payment` char(1) DEFAULT NULL,
+  `bill_number` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `payment` char(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `artificial` tinyint(1) NOT NULL DEFAULT '0',
-  `type` varchar(20) DEFAULT NULL,
-  `color` varchar(20) DEFAULT NULL,
+  `type` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `color` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -208,9 +240,9 @@ DROP TABLE IF EXISTS `holiday`;
 CREATE TABLE IF NOT EXISTS `holiday` (
   `date` date NOT NULL,
   `weekday` int NOT NULL,
-  `description` varchar(50) NOT NULL,
+  `description` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `update_date` date DEFAULT NULL,
-  `account` varchar(20) NOT NULL,
+  `account` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `number` int NOT NULL,
   UNIQUE KEY `date` (`date`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -230,8 +262,8 @@ INSERT INTO `holiday` (`date`, `weekday`, `description`, `update_date`, `account
 
 DROP TABLE IF EXISTS `ip_cam`;
 CREATE TABLE IF NOT EXISTS `ip_cam` (
-  `name` varchar(20) NOT NULL,
-  `ip` varchar(20) NOT NULL,
+  `name` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ip` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `in_out` tinyint(1) NOT NULL DEFAULT '0',
   `pay` tinyint(1) NOT NULL DEFAULT '0',
   `open` tinyint(1) NOT NULL DEFAULT '0',
@@ -244,7 +276,8 @@ CREATE TABLE IF NOT EXISTS `ip_cam` (
 --
 
 INSERT INTO `ip_cam` (`name`, `ip`, `in_out`, `pay`, `open`, `number`) VALUES
-('BoaHwua OUT', '192.168.51.10', 0, 1, 0, 0);
+('t1', '192.168.1.100', 0, 1, 0, 0),
+('t2', '192.168.1.110', 1, 1, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -255,12 +288,12 @@ INSERT INTO `ip_cam` (`name`, `ip`, `in_out`, `pay`, `open`, `number`) VALUES
 DROP TABLE IF EXISTS `pay_history`;
 CREATE TABLE IF NOT EXISTS `pay_history` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `car_number` varchar(20) DEFAULT NULL,
+  `car_number` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `time_in` datetime DEFAULT NULL,
   `time_pay` datetime DEFAULT NULL,
   `cost` int DEFAULT NULL,
-  `bill_number` varchar(20) DEFAULT NULL,
-  `payment` varchar(1) DEFAULT NULL,
+  `bill_number` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `payment` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -274,11 +307,11 @@ DROP TABLE IF EXISTS `regular_pass`;
 CREATE TABLE IF NOT EXISTS `regular_pass` (
   `id` int NOT NULL AUTO_INCREMENT,
   `car_number` int NOT NULL,
-  `customer_name` varchar(20) NOT NULL,
+  `customer_name` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `start_date` date NOT NULL,
   `due_date` date NOT NULL,
   `cost` int NOT NULL DEFAULT '0',
-  `phone_number` varchar(20) NOT NULL,
+  `phone_number` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -303,7 +336,7 @@ CREATE TABLE IF NOT EXISTS `user` (
 --
 
 INSERT INTO `user` (`account`, `password`, `name`, `phone`, `permission`) VALUES
-('parkjohn', '123456', 'john', '09123456789', 'A');
+('parkjohn', '123456', 'John', '09123456789', 'A');
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

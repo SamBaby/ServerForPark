@@ -7,7 +7,6 @@ import os
 from datetime import datetime
 import time
 import threading
-import numpy as np
 
 class camStatus:
     inNeedToOpen = False
@@ -65,12 +64,12 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         pass
 #waiting Gio0 be triggered and add car data to queue
 def waitForGio0Triggered(in_out, data, ip, car_number):
-    for i in np.arange(0, 10 , 0.05):
+    for i in range(0, 200):
         if in_out == "0":
             if cam_status.carInGio0 == "0":
                 cam_status.carInQueue.append(data)
                 cam_status.inNeedToOpen = True
-                waitForGio1Triggered(in_out, ip)
+                threading.Thread(waitForGio1Triggered(in_out, ip)).start()
                 cleanLEDSerialData(cam_status.heartbeatToSend[ip]["0"])
                 setWelcomeSerialData(ip)
                 setCarNumberSerialData(ip, car_number)
@@ -83,11 +82,12 @@ def waitForGio0Triggered(in_out, data, ip, car_number):
                 cleanLEDSerialData(cam_status.heartbeatToSend[ip]["0"])
                 setThankUSerialData(ip)
                 setCarNumberSerialData(ip, car_number)
-                waitForGio1Triggered(in_out, ip)
+                threading.Thread(waitForGio1Triggered(in_out, ip)).start()
                 break
+        time.sleep(0.05)
 def waitForGio1Triggered(in_out, ip):
     needPop = True
-    for i in np.arange(0, 20 , 0.05):
+    for i in range(0, 400):
         if in_out == "0":
             if cam_status.carInGio1 == "0":
                 updateCarInside()
@@ -104,6 +104,7 @@ def waitForGio1Triggered(in_out, ip):
                 setOutNormalScreen(ip)
                 needPop = False
                 break
+        time.sleep(0.05)
     # GIO1 not triggered, dispose data
     if needPop:
         if in_out == "0":
@@ -229,10 +230,10 @@ def check_car(data):
         if checkCanIn():
             if cam_status.carInGio0 != "0":
                 #gio0 in is not triggered
-                waitForGio0Triggered(cam_in_out, data, ip, car_number)
+                threading.Thread(target=waitForGio0Triggered(cam_in_out, data, ip, car_number)).start()
                 return res
             cam_status.carInQueue.append(data)
-            waitForGio1Triggered(cam_in_out, ip)
+            threading.Thread(waitForGio1Triggered(cam_in_out, ip)).start()
             #add serial0 data to WELCOME XXXXXXX
             res["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
             res["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
@@ -249,10 +250,10 @@ def check_car(data):
         if checkCanOut(data):
             if cam_status.carInGio1 != "0":
                 #gio0 out is not triggered
-                waitForGio0Triggered(cam_in_out, data, ip, car_number)
+                threading.Thread(target=waitForGio0Triggered(cam_in_out, data, ip, car_number)).start()
                 return res
             cam_status.carOutQueue.append(data)
-            waitForGio1Triggered(cam_in_out, ip)
+            threading.Thread(waitForGio1Triggered(cam_in_out, ip)).start()
             #set thank u to XXXXXXX
             res["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
             res["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
