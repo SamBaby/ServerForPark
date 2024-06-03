@@ -61,8 +61,8 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         
         return response
     
-    # def log_message(self, format, *args):
-    #     pass
+    def log_message(self, format, *args):
+        pass
 #waiting Gio0 be triggered and add car data to queue
 def waitForGio0Triggered(in_out, data, ip, car_number):
     for i in np.arange(0, 10 , 0.05):
