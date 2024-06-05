@@ -827,7 +827,8 @@ if($conn){
             break;
         //新增繳費紀錄
         case 'pay_dates_add':
-            $query = payDateSearch($query);
+            $query = payHistoryAdd($query);
+            $output = false;
             break;
         //月票新增
         case 'regular_pass_add':
