@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： 127.0.0.1:3306
--- 產生時間： 2024-06-03 05:30:48
+-- 產生時間： 2024-06-07 04:41:47
 -- 伺服器版本： 8.2.0
 -- PHP 版本： 8.2.13
 
@@ -193,11 +193,15 @@ INSERT INTO `ecpay` (`id`, `print_status`, `plus_car_number`, `machine_id`, `mer
 DROP TABLE IF EXISTS `floor`;
 CREATE TABLE IF NOT EXISTS `floor` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `car_slot` int NOT NULL DEFAULT '0',
+  `car_slot` int NOT NULL DEFAULT '100',
   `pregnant_slot` int NOT NULL DEFAULT '0',
   `disabled_slot` int NOT NULL DEFAULT '0',
   `charging_slot` int NOT NULL DEFAULT '0',
   `reserved_slot` int NOT NULL DEFAULT '0',
+  `car_left` int NOT NULL DEFAULT '0',
+  `pregnant_left` int NOT NULL DEFAULT '0',
+  `disabled_left` int NOT NULL DEFAULT '0',
+  `charging_left` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -205,8 +209,8 @@ CREATE TABLE IF NOT EXISTS `floor` (
 -- 傾印資料表的資料 `floor`
 --
 
-INSERT INTO `floor` (`id`, `car_slot`, `pregnant_slot`, `disabled_slot`, `charging_slot`, `reserved_slot`) VALUES
-(1, 100, 0, 0, 0, 0);
+INSERT INTO `floor` (`id`, `car_slot`, `pregnant_slot`, `disabled_slot`, `charging_slot`, `reserved_slot`, `car_left`, `pregnant_left`, `disabled_left`, `charging_left`) VALUES
+(1, 100, 0, 0, 0, 0, 0, 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -268,6 +272,7 @@ CREATE TABLE IF NOT EXISTS `ip_cam` (
   `pay` tinyint(1) NOT NULL DEFAULT '0',
   `open` tinyint(1) NOT NULL DEFAULT '0',
   `number` int NOT NULL DEFAULT '0',
+  `read_gio` tinyint(1) NOT NULL DEFAULT '0',
   UNIQUE KEY `ip` (`ip`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -275,9 +280,32 @@ CREATE TABLE IF NOT EXISTS `ip_cam` (
 -- 傾印資料表的資料 `ip_cam`
 --
 
-INSERT INTO `ip_cam` (`name`, `ip`, `in_out`, `pay`, `open`, `number`) VALUES
-('t1', '192.168.1.100', 0, 1, 0, 0),
-('t2', '192.168.1.110', 1, 1, 0, 0);
+INSERT INTO `ip_cam` (`name`, `ip`, `in_out`, `pay`, `open`, `number`, `read_gio`) VALUES
+('t1', '192.168.1.100', 0, 1, 0, 0, 0),
+('t2', '192.168.1.110', 1, 1, 0, 0, 0);
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `money_count`
+--
+
+DROP TABLE IF EXISTS `money_count`;
+CREATE TABLE IF NOT EXISTS `money_count` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `five` int NOT NULL DEFAULT '0',
+  `ten` int NOT NULL DEFAULT '0',
+  `fifty` int NOT NULL DEFAULT '0',
+  `hundred` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 傾印資料表的資料 `money_count`
+--
+
+INSERT INTO `money_count` (`id`, `five`, `ten`, `fifty`, `hundred`) VALUES
+(1, 0, 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -296,6 +324,32 @@ CREATE TABLE IF NOT EXISTS `pay_history` (
   `payment` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `print_setting`
+--
+
+DROP TABLE IF EXISTS `print_setting`;
+CREATE TABLE IF NOT EXISTS `print_setting` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `new_roll` int NOT NULL DEFAULT '500',
+  `warning` int NOT NULL DEFAULT '30',
+  `print_invoice` int NOT NULL DEFAULT '1',
+  `print_revenue` int NOT NULL DEFAULT '2',
+  `print_coupon` int NOT NULL DEFAULT '1',
+  `pay_left` int NOT NULL DEFAULT '500',
+  `exit_left` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 傾印資料表的資料 `print_setting`
+--
+
+INSERT INTO `print_setting` (`id`, `new_roll`, `warning`, `print_invoice`, `print_revenue`, `print_coupon`, `pay_left`, `exit_left`) VALUES
+(1, 500, 30, 1, 2, 1, 500, 0);
 
 -- --------------------------------------------------------
 

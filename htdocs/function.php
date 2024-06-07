@@ -221,7 +221,7 @@ function camAdd($query)
     $name = '';
     $in_out = '';
     $pay = '';
-    $open = '';
+    $read_gio = '';
     if (!empty($_GET['ip'])) {
         $ip = $_GET['ip'];
     }
@@ -237,18 +237,18 @@ function camAdd($query)
     if (!empty($_GET['pay'])) {
         $pay = $_GET['pay'];
     }
-    if (!empty($_GET['open'])) {
-        $open = $_GET['open'];
+    if (!empty($_GET['read_gio'])) {
+        $read_gio = $_GET['read_gio'];
     }
     $query = sprintf(
-        "INSERT INTO ip_cam (number,name,ip,in_out,pay,open)
+        "INSERT INTO ip_cam (number,name,ip,in_out,pay,read_gio)
         VALUES (%d, '%s', '%s',%d,%d,%d);",
         $number,
         $name,
         $ip,
         $in_out,
         $pay,
-        $open
+        $read_gio
     );
     return $query;
 }
@@ -261,7 +261,7 @@ function camUpdate($query)
     $number = '';
     $in_out = '';
     $pay = '';
-    $open = '';
+    $read_gio = '';
     if (!empty($_GET['old_ip'])) {
         $old_ip = $_GET['old_ip'];
     }
@@ -277,20 +277,20 @@ function camUpdate($query)
     if (!empty($_GET['pay'])) {
         $pay = $_GET['pay'];
     }
-    if (!empty($_GET['open'])) {
-        $open = $_GET['open'];
+    if (!empty($_GET['read_gio'])) {
+        $read_gio = $_GET['read_gio'];
     }
     if (!empty($_GET['number'])) {
         $number = $_GET['number'];
     }
     $query = sprintf(
-        "UPDATE `ip_cam` SET `number` = '%d', ip='%s', `name` = '%s', `in_out` = '%d', `pay` = '%d', `open`='%d' WHERE `ip` = '%s'",
+        "UPDATE `ip_cam` SET `number` = '%d', ip='%s', `name` = '%s', `in_out` = '%d', `pay` = '%d', `read_gio`='%d' WHERE `ip` = '%s'",
         $number,
         $new_ip,
         $name,
         $in_out,
         $pay,
-        $open,
+        $read_gio,
         $old_ip
     );
     return $query;
@@ -576,13 +576,13 @@ function payDateSearch($query)
     $end = '';
     $car_number ='';
     $payment ='';
-    if (!empty($_GET['start']) && !empty($_GET['end'])) {
-        $start = $_GET['start'];
-        $end = $_GET['end'];
+    if (!empty($_POST['start']) && !empty($_POST['end'])) {
+        $start = $_POST['start'];
+        $end = $_POST['end'];
         $query .= sprintf( " WHERE time_pay BETWEEN '%s' AND '%s'",$start,$end);
     }
-    if (!empty($_GET['car_number'])) {
-        $car_number = $_GET['car_number'];
+    if (!empty($_POST['car_number'])) {
+        $car_number = $_POST['car_number'];
         if(empty($start)){
             $query .= sprintf(" WHERE car_number = '%s'", $car_number);
         }else{
@@ -590,8 +590,8 @@ function payDateSearch($query)
         }
         
     }
-    if (!empty($_GET['payment'])) {
-        $payment = $_GET['payment'];
+    if (!empty($_POST['payment'])) {
+        $payment = $_POST['payment'];
         if(empty($start) && empty($car_number)){
             $query .= sprintf(" WHERE payment = '%s'", $payment);
         }else{
@@ -606,12 +606,12 @@ function payHistoryAdd($query)
     $query = sprintf(
         "INSERT INTO pay_history (car_number,time_in,time_pay,cost,bill_number,payment)
         VALUES ('%s', '%s', '%s','%d','%s','%s');",
-        $_GET['car_number'],
-        $_GET['time_in'],
-        $_GET['time_pay'],
-        $_GET['cost'],
-        $_GET['bill_number'],
-        $_GET['payment']
+        $_POST['car_number'],
+        $_POST['time_in'],
+        $_POST['time_pay'],
+        $_POST['cost'],
+        $_POST['bill_number'],
+        $_POST['payment']
     );
     return $query;
 }
@@ -907,6 +907,10 @@ if($conn){
         //讀取並傳送圖片
         case 'get_car_image':
             $query = carImage($query);
+            break;
+        //取得列印設定
+        case 'print_search':
+            $query = "SELECT * FROM `print_setting` WHERE id = 1;";
             break;
         default:
             # code...
