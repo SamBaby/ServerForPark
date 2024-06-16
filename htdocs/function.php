@@ -14,30 +14,34 @@ function slotUpdate($query)
     if (!empty($_GET['car'])) {
         $car = $_GET['car'];
     }
-    ;
+    
     if (!empty($_GET['pregnant'])) {
         $pregnant = $_GET['pregnant'];
     }
-    ;
+    
     if (!empty($_GET['disabled'])) {
         $disabled = $_GET['disabled'];
     }
-    ;
+    
     if (!empty($_GET['charging'])) {
         $charging = $_GET['charging'];
     }
-    ;
+    
     if (!empty($_GET['reserved'])) {
         $reserved = $_GET['reserved'];
     }
-    ;
+    
     $query = sprintf(
-        "UPDATE floor SET car_slot = '%d', pregnant_slot = '%d', disabled_slot = '%d', charging_slot = '%d', reserved_slot = '%d' WHERE floor.id = 1",
+        "UPDATE floor SET car_slot = '%d', pregnant_slot = '%d', disabled_slot = '%d', charging_slot = '%d', reserved_slot = '%d', car_left='%d', pregnant_left='%d', disabled_left='%d', charging_left='%d' WHERE floor.id = 1",
         $car,
         $pregnant,
         $disabled,
         $charging,
-        $reserved
+        $reserved,
+        $_GET['car_left'],
+        $_GET['pregnant_left'],
+        $_GET['disabled_left'],
+        $_GET['charging_left']
     );
     return $query;
 }
@@ -304,6 +308,15 @@ function camUpdateOpen($query)
     );
     return $query;
 }
+function camUpdateClose($query)
+{
+    $query = sprintf(
+        "UPDATE `ip_cam` SET  `close`='%d' WHERE `ip` = '%s'",
+        $_GET['close'],
+        $_GET['ip']
+    );
+    return $query;
+}
 function holidaySingleSearch($query)
 {
     $date = '';
@@ -506,14 +519,15 @@ function ecpayUpdate($query)
         $machine_id = $_GET['machine_id'];
     }
     $query = sprintf(
-        "UPDATE `ecpay` SET `print_status` = '%d', `plus_car_number` = '%d', `merchant_id` = '%s', `company_id` = '%s', `hash_key` = '%s', `hash_iv` = '%s', `machine_id` = '%s' WHERE `ecpay`.`id` = 1",
+        "UPDATE `ecpay` SET `print_status` = '%d', `plus_car_number` = '%d', `merchant_id` = '%s', `company_id` = '%s', `hash_key` = '%s', `hash_iv` = '%s', `machine_id` = '%s', `test` = '%s' WHERE `ecpay`.`id` = 1",
         $print_status,
         $plus_car_number,
         $merchant_id,
         $company_id,
         $hash_key,
         $hash_iv,
-        $machine_id
+        $machine_id,
+        $_GET['test']
     );
 
     return $query;
@@ -522,11 +536,11 @@ function historyDateSearch($query)
 {
     $start = '';
     $end = '';
-    if (!empty($_GET['start'])) {
-        $start = $_GET['start'];
+    if (!empty($_POST['start'])) {
+        $start = $_POST['start'];
     }
-    if (!empty($_GET['end'])) {
-        $end = $_GET['end'];
+    if (!empty($_POST['end'])) {
+        $end = $_POST['end'];
     }
 
     $query = sprintf(
@@ -553,8 +567,8 @@ function historyDelete($query){
 }
 function historyAdd($query){
     $query = sprintf(
-        "INSERT INTO history (car_number,time_in,time_out,time_pay,cost,bill_number,payment,artificial,type,color)
-        VALUES ('%s', '%s', '%s','%s','%s','%s','%s','%s','%s','%s');",
+        "INSERT INTO history (car_number,time_in,time_out,time_pay,cost,bill_number,payment,artificial,type,color,picture_url)
+        VALUES ('%s', '%s', '%s','%s','%s','%s','%s','%s','%s','%s','%s');",
         $_GET['car_number'],
         $_GET['time_in'],
         $_GET['time_out'],
@@ -564,7 +578,8 @@ function historyAdd($query){
         $_GET['payment'],
         $_GET['artificial'],
         $_GET['type'],
-        $_GET['color']
+        $_GET['color'],
+        $_GET['path']
     );
 
     return $query;
@@ -620,8 +635,18 @@ function carInsideWithCarNumber($query)
     $query = sprintf( "SELECT * FROM cars_inside WHERE car_number = '%s'",$_GET['car_number']);
     return $query;
 }
+function carInsideWithCarNumberAndDate($query)
+{
+    $query = sprintf( "SELECT * FROM cars_inside 
+                        WHERE car_number = '%s'
+                        AND time_in BETWEEN '%s' AND '%s'",
+                        $_POST['car_number'],
+                        $_POST['start'],
+                        $_POST['end']);
+    return $query;
+}
 function carInsideWithNumber($query)
-{//sprintf( "SELECT * FROM cars_inside WHERE car_number Like '%%s%'", $_GET['number']);
+{
     $query = "SELECT * FROM cars_inside WHERE car_number Like '%".$_GET['number']."%'";
     return $query;
 }
@@ -630,9 +655,9 @@ function carInsideDateSearch($query)
     $query = "SELECT * FROM cars_inside";
     $start = '';
     $end = '';
-    if (!empty($_GET['start']) && !empty($_GET['end'])) {
-        $start = $_GET['start'];
-        $end = $_GET['end'];
+    if (!empty($_POST['start']) && !empty($_POST['end'])) {
+        $start = $_POST['start'];
+        $end = $_POST['end'];
         $query .= sprintf( " WHERE time_pay BETWEEN '%s' AND '%s'",$start,$end);
     }
 
@@ -667,13 +692,98 @@ function carInsideAdd($query)
 function carInsideUpdatePay($query)
 {
     $query = sprintf(
-        "UPDATE `cars_inside` SET `time_pay` = '%s',`cost` = '%d',`discount` = '%d', `bill_number` = '%s', `payment`= '%s'   WHERE `car_number` = '%s'",
+        "UPDATE `cars_inside` SET `time_pay` = '%s',`cost` = '%d',`discount` = '%d', `bill_number` = '%s', `payment`= '%s'   WHERE `car_number` = '%s';",
         $_POST['time_pay'],
         $_POST['cost'],
         $_POST['discount'],
         $_POST['bill_number'],
         $_POST['payment'],
         $_POST['car_number']
+    );
+
+    return $query;
+}
+function carInsideUpdateNumber($query)
+{
+    $query = sprintf(
+        "UPDATE `cars_inside` SET `car_number` = '%s', `time_in`= '%s'   WHERE `car_number` = '%s';",
+        $_POST['new_number'],
+        $_POST['time_in'],
+        $_POST['old_number']
+    );
+
+    return $query;
+}
+function printUpdate($query){
+    $query = sprintf(
+        "UPDATE `print_setting` SET `new_roll` = '%s', `warning`= '%s',`print_invoice`= '%s',`print_revenue`= '%s',`print_coupon`= '%s'   WHERE `id` = 1;",
+        $_GET['new_roll'],
+        $_GET['warning'],
+        $_GET['print_invoice'],
+        $_GET['print_revenue'],
+        $_GET['print_coupon']
+    );
+
+    return $query;
+}
+
+function printPaperLeftUpdate($query){
+    $query = sprintf(
+        "UPDATE `print_setting` SET `pay_left` = '%s'  WHERE `id` = 1;",
+        $_GET['pay_left']);
+
+    return $query;
+}
+
+function couponHistoryAdd($query)
+{
+    $query = sprintf(
+        "INSERT INTO coupon_history (time_fee, amount,count,deadline,user,mark)
+        VALUES ('%s', '%s', '%s', '%s','%s','%s');",
+        $_POST['time_fee'],
+        $_POST['amount'],
+        $_POST['count'],
+        $_POST['deadline'],
+        $_POST['user'],
+        $_POST['mark']
+    );
+
+    return $query;
+}
+function couponSettingUpdate($query){
+    $query = sprintf(
+        "UPDATE `coupon_setting` SET `time_fee` = '%s', `amount`= '%s',`paper`= '%s',`deadline`= '%s', `code` = '%s',`print`= '%s'   WHERE `id` = 1;",
+        $_POST['time_fee'],
+        $_POST['amount'],
+        $_POST['paper'],
+        $_POST['deadline'],
+        $_POST['code'],
+        $_POST['print']
+    );
+
+    return $query;
+}
+function couponSettingUpdateStop($query){
+    $query = "UPDATE `coupon_setting` SET `print`= '0'   WHERE `id` = 1;";
+
+    return $query;
+}
+function couponListAdd($query)
+{
+    $query = sprintf(
+        "INSERT INTO coupon_list (id,deadline)
+        VALUES ('%s', '%s');",
+        $_POST['id'],
+        $_POST['deadline']
+    );
+
+    return $query;
+}
+function couponListSearch($query)
+{
+    $query = sprintf(
+        "SELECT * FROM coupon_list WHERE id='%s';",
+        $_GET['id']
     );
 
     return $query;
@@ -685,7 +795,74 @@ function carImage($query)
     $image_base64Data = base64_encode($file_contents);
     return $image_base64Data;
 }
+function moneyCountUpdate($query){
+    $query = sprintf(
+        "UPDATE `money_count` SET `five` = '%s', `ten`= '%s',`fifty`= '%s',`hundred`= '%s'  WHERE `id` = 1;",
+        $_GET['five'],
+        $_GET['ten'],
+        $_GET['fifty'],
+        $_GET['hundred']
+    );
 
+    return $query;
+}
+function moneyBasicUpdate($query){
+    $query = sprintf(
+        "UPDATE `money_basic` SET `five_basic` = '%s', `ten_basic`= '%s',`fifty_basic`= '%s',`five_alert` = '%s', `ten_alert`= '%s',`fifty_alert`= '%s'  WHERE `id` = 1;",
+        $_GET['five_basic'],
+        $_GET['ten_basic'],
+        $_GET['fifty_basic'],
+        $_GET['five_alert'],
+        $_GET['ten_alert'],
+        $_GET['fifty_alert']
+    );
+    printf($query);
+    return $query;
+}
+function moneyRefundUpdate($query){
+    $query = sprintf(
+        "UPDATE `money_refund` SET `five` = '%s', `ten`= '%s',`fifty`= '%s',`refund` = '1' WHERE `id` = 1;",
+        $_GET['five'],
+        $_GET['ten'],
+        $_GET['fifty']
+    );
+
+    return $query;
+}
+function moneyRefundStop($query){
+    $query = sprintf(
+        "UPDATE `money_refund` SET `refund` = '0' WHERE `id` = 1;"
+    );
+
+    return $query;
+}
+function moneySupplyUpdate($query){
+    $query = sprintf(
+        "UPDATE `money_supply` SET `five_count` = '%s', `ten_count`= '%s',`fifty_count`= '%s' WHERE `id` = 1;",
+        $_GET['five_count'],
+        $_GET['ten_count'],
+        $_GET['fifty_count']
+    );
+
+    return $query;
+}
+function moneySupplyStart($query){
+    $query = sprintf(
+        "UPDATE `money_supply` SET `five` = '%s', `ten`= '%s',`fifty`= '%s',`five_count` = '0', `ten_count`= '0',`fifty_count`= '0',`supply` = '1' WHERE `id` = 1;",
+        $_GET['five'],
+        $_GET['ten'],
+        $_GET['fifty']
+    );
+
+    return $query;
+}
+function moneySupplyStop($query){
+    $query = sprintf(
+        "UPDATE `money_supply` SET `supply` = '0' WHERE `id` = 1;"
+    );
+
+    return $query;
+}
 $func = $_GET['func'];
 $query = '';
 $output = true;
@@ -744,6 +921,11 @@ if($conn){
         //修改CAM開啟狀態
         case 'cam_update_open':
             $query = camUpdateOpen($query);
+            $output = false;
+            break;
+        //修改CAM關閉狀態
+        case 'cam_update_close':
+            $query = camUpdateClose($query);
             $output = false;
             break;
         //新增CAM
@@ -842,6 +1024,10 @@ if($conn){
         case 'regular_pass_delete':
             # code...
             break;
+        //月票刪除
+        case 'regular_pass_search':
+            # code...
+            break;
         //停車位查詢
         case 'slot_search':
             $query = "SELECT * FROM `floor` WHERE id = 1;";
@@ -859,17 +1045,21 @@ if($conn){
         case 'cars_inside':
             $query = "SELECT * FROM `cars_inside`;";
             break;
-        //車號場內車子查詢
+        //車號場內車子查詢特定號碼
         case 'cars_inside_with_car_number':
             $query = carInsideWithCarNumber($query);
             break;
-        //車號場內車子查詢
+        //車號場內車子查詢相關號碼
         case 'cars_inside_with_number':
             $query = carInsideWithNumber($query);
             break;
         //場內期間車子查詢
         case 'cars_inside_dates_inside':
             $query = carInsideDateSearch($query);
+            break;
+        //車號場內車子查詢相關號碼
+        case 'cars_inside_with_number_and_dates':
+            $query = carInsideWithCarNumberAndDate($query);
             break;
          //場內車子刪除
         case 'cars_inside_delete':
@@ -884,6 +1074,11 @@ if($conn){
         //場內車子付款資料更新
         case 'cars_inside_update':
             $query = carInsideUpdatePay($query);
+            $output = false;
+            break;
+        //場內車子付款資料更新
+        case 'cars_inside_update_number':
+            $query = carInsideUpdateNumber($query);
             $output = false;
             break;
         //基本設置查詢
@@ -912,6 +1107,91 @@ if($conn){
         case 'print_search':
             $query = "SELECT * FROM `print_setting` WHERE id = 1;";
             break;
+        //列印設定
+        case 'print_update':
+            $query = printUpdate($query);
+            $output = false;
+            break;
+        case 'print_update_paper_left':
+            $query = printPaperLeftUpdate($query);
+            $output = false;
+            break;
+        //取得優惠券歷史
+        case 'coupon_history_search':
+            $query = "SELECT * FROM `coupon_history`";
+            break;
+        //新增優惠券歷史
+        case 'coupon_history_add':
+            $query = couponHistoryAdd($query);
+            $output = false;
+            break;
+        //取得優惠券設定
+        case 'coupon_setting_search':
+            $query = "SELECT * FROM `coupon_setting` where `id` = 1";
+            break;
+        //優惠券設定
+        case 'coupon_setting_update':
+            $query = couponSettingUpdate($query);
+            $output = false;
+            break;
+        //停止列印優惠券
+        case 'coupon_setting_update_stop':
+            $query = couponSettingUpdateStop($query);
+            $output = false;
+            break;
+        //新增優惠券列表
+        case 'coupon_list_add':
+            $query = couponListAdd($query);
+            $output = false;
+            break;
+        //查詢優惠券列表成員
+        case 'coupon_list_search':
+            $query = couponListSearch($query);
+            break;
+        //查詢優惠券列表
+        case 'coupon_list_search_all':
+            $query = "SELECT * FROM coupon_list";
+            break;
+        case 'money_count_search':
+            $query = "SELECT * FROM money_count WHERE `id` = '1';";
+            break;
+        case 'money_count_update':
+            $query = moneyCountUpdate($query);
+            $output = false;
+            break;
+        case 'money_basic_search':
+            $query = "SELECT * FROM money_basic WHERE `id` = '1';";
+            break;
+        case 'money_basic_update':
+            $query = moneyBasicUpdate($query);
+            $output = false;
+            break;
+        case 'money_refund_search':
+            $query = "SELECT * FROM money_refund WHERE `id` = '1';";
+            break;
+        case 'money_refund_update':
+            $query = moneyRefundUpdate($query);
+            $output = false;
+            break;
+        case 'money_refund_stop':
+            $query = moneyRefundStop($query);
+            $output = false;
+            break;
+        case 'money_supply_search':
+            $query = "SELECT * FROM money_supply WHERE `id` = '1';";
+            break;
+        case 'money_supply_update':
+            $query = moneySupplyUpdate($query);
+            $output = false;
+            break;
+        case 'money_supply_start':
+            $query = moneySupplyStart($query);
+            $output = false;
+            break;
+        case 'money_supply_stop':
+            $query = moneySupplyStop($query);
+            $output = false;
+            break;
         default:
             # code...
             break;
@@ -929,8 +1209,6 @@ if($conn){
                 }
                 echo json_encode($jsonData);
         
-                // $row = $result->fetch_assoc();//拿資料
-                // echo json_encode($row);
             }else{
                 echo '';
             }

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： 127.0.0.1:3306
--- 產生時間： 2024-06-07 04:41:47
+-- 產生時間： 2024-06-13 08:06:25
 -- 伺服器版本： 8.2.0
 -- PHP 版本： 8.2.13
 
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS `company_info` (
 --
 
 INSERT INTO `company_info` (`id`, `lot_name`, `company_name`, `company_address`, `company_phone`, `server_token`, `cht_chat_id`, `standby_path`, `standby_sec`, `auto_upload_server`, `standby_play`) VALUES
-(1, '鳳山保華', '北將科技', '台中市', '1', '2', '3', '4', 5, 1, 1);
+(1, 'ParkJohn', 'ParkJohn', 'Taichung', '1', '2', '3', '4', 5, 1, 1);
 
 -- --------------------------------------------------------
 
@@ -110,9 +110,10 @@ INSERT INTO `company_info` (`id`, `lot_name`, `company_name`, `company_address`,
 DROP TABLE IF EXISTS `coupon_history`;
 CREATE TABLE IF NOT EXISTS `coupon_history` (
   `id` bigint NOT NULL AUTO_INCREMENT,
+  `time_fee` tinyint(1) NOT NULL DEFAULT '0',
   `amount` int NOT NULL,
   `count` int NOT NULL,
-  `deadline` datetime NOT NULL,
+  `deadline` date NOT NULL,
   `user` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `mark` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -126,11 +127,39 @@ CREATE TABLE IF NOT EXISTS `coupon_history` (
 
 DROP TABLE IF EXISTS `coupon_list`;
 CREATE TABLE IF NOT EXISTS `coupon_list` (
-  `id` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `used` tinyint(1) NOT NULL DEFAULT '0',
-  `deadline` datetime NOT NULL,
+  `deadline` date NOT NULL,
+  `time_fee` tinyint(1) NOT NULL DEFAULT '0',
+  `amount` int NOT NULL DEFAULT '0',
   UNIQUE KEY `id` (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `coupon_setting`
+--
+
+DROP TABLE IF EXISTS `coupon_setting`;
+CREATE TABLE IF NOT EXISTS `coupon_setting` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `time_fee` tinyint(1) NOT NULL,
+  `amount` int NOT NULL,
+  `paper` int NOT NULL,
+  `deadline` date NOT NULL,
+  `code` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `print` tinyint(1) NOT NULL DEFAULT '0',
+  `ip` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 傾印資料表的資料 `coupon_setting`
+--
+
+INSERT INTO `coupon_setting` (`id`, `time_fee`, `amount`, `paper`, `deadline`, `code`, `print`, `ip`) VALUES
+(1, 0, 0, 0, '2024-06-11', '0', 0, '0');
 
 -- --------------------------------------------------------
 
@@ -174,6 +203,7 @@ CREATE TABLE IF NOT EXISTS `ecpay` (
   `company_id` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `hash_key` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `hash_iv` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `test` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -181,8 +211,8 @@ CREATE TABLE IF NOT EXISTS `ecpay` (
 -- 傾印資料表的資料 `ecpay`
 --
 
-INSERT INTO `ecpay` (`id`, `print_status`, `plus_car_number`, `machine_id`, `merchant_id`, `company_id`, `hash_key`, `hash_iv`) VALUES
-(1, 2, 1, 'SM01', '3085340', '1', 'HwiqPsywG1hLQNuN', 'YqITWD4TyKacYXpn');
+INSERT INTO `ecpay` (`id`, `print_status`, `plus_car_number`, `machine_id`, `merchant_id`, `company_id`, `hash_key`, `hash_iv`, `test`) VALUES
+(1, 2, 1, 'SM01', '3085340', '1', 'HwiqPsywG1hLQNuN', 'YqITWD4TyKacYXpn', 1);
 
 -- --------------------------------------------------------
 
@@ -231,6 +261,7 @@ CREATE TABLE IF NOT EXISTS `history` (
   `artificial` tinyint(1) NOT NULL DEFAULT '0',
   `type` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `color` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `picture_url` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -271,8 +302,9 @@ CREATE TABLE IF NOT EXISTS `ip_cam` (
   `in_out` tinyint(1) NOT NULL DEFAULT '0',
   `pay` tinyint(1) NOT NULL DEFAULT '0',
   `open` tinyint(1) NOT NULL DEFAULT '0',
+  `close` tinyint(1) NOT NULL DEFAULT '0',
   `number` int NOT NULL DEFAULT '0',
-  `read_gio` tinyint(1) NOT NULL DEFAULT '0',
+  `read_gio` tinyint(1) NOT NULL DEFAULT '1',
   UNIQUE KEY `ip` (`ip`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -280,9 +312,35 @@ CREATE TABLE IF NOT EXISTS `ip_cam` (
 -- 傾印資料表的資料 `ip_cam`
 --
 
-INSERT INTO `ip_cam` (`name`, `ip`, `in_out`, `pay`, `open`, `number`, `read_gio`) VALUES
-('t1', '192.168.1.100', 0, 1, 0, 0, 0),
-('t2', '192.168.1.110', 1, 1, 0, 0, 0);
+INSERT INTO `ip_cam` (`name`, `ip`, `in_out`, `pay`, `open`, `close`, `number`, `read_gio`) VALUES
+('t1', '192.168.1.100', 0, 1, 0, 0, 0, 1),
+('t2', '192.168.1.110', 1, 1, 0, 0, 0, 1);
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `money_basic`
+--
+
+DROP TABLE IF EXISTS `money_basic`;
+CREATE TABLE IF NOT EXISTS `money_basic` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `five_basic` int NOT NULL DEFAULT '0',
+  `ten_basic` int NOT NULL DEFAULT '0',
+  `fifty_basic` int NOT NULL DEFAULT '0',
+  `five_alert` int NOT NULL DEFAULT '0',
+  `ten_alert` int NOT NULL DEFAULT '0',
+  `fifty_alert` int NOT NULL DEFAULT '0',
+  `ip` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 傾印資料表的資料 `money_basic`
+--
+
+INSERT INTO `money_basic` (`id`, `five_basic`, `ten_basic`, `fifty_basic`, `five_alert`, `ten_alert`, `fifty_alert`, `ip`) VALUES
+(1, 0, 0, 0, 0, 0, 0, '0');
 
 -- --------------------------------------------------------
 
@@ -297,6 +355,7 @@ CREATE TABLE IF NOT EXISTS `money_count` (
   `ten` int NOT NULL DEFAULT '0',
   `fifty` int NOT NULL DEFAULT '0',
   `hundred` int NOT NULL DEFAULT '0',
+  `ip` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -304,8 +363,59 @@ CREATE TABLE IF NOT EXISTS `money_count` (
 -- 傾印資料表的資料 `money_count`
 --
 
-INSERT INTO `money_count` (`id`, `five`, `ten`, `fifty`, `hundred`) VALUES
-(1, 0, 0, 0, 0);
+INSERT INTO `money_count` (`id`, `five`, `ten`, `fifty`, `hundred`, `ip`) VALUES
+(1, 0, 0, 0, 0, '0');
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `money_refund`
+--
+
+DROP TABLE IF EXISTS `money_refund`;
+CREATE TABLE IF NOT EXISTS `money_refund` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `five` int NOT NULL DEFAULT '0',
+  `ten` int NOT NULL DEFAULT '0',
+  `fifty` int NOT NULL DEFAULT '0',
+  `refund` tinyint(1) NOT NULL DEFAULT '0',
+  `ip` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 傾印資料表的資料 `money_refund`
+--
+
+INSERT INTO `money_refund` (`id`, `five`, `ten`, `fifty`, `refund`, `ip`) VALUES
+(1, 0, 0, 0, 0, '0');
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `money_supply`
+--
+
+DROP TABLE IF EXISTS `money_supply`;
+CREATE TABLE IF NOT EXISTS `money_supply` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `five` int NOT NULL DEFAULT '0',
+  `ten` int NOT NULL DEFAULT '0',
+  `fifty` int NOT NULL DEFAULT '0',
+  `five_count` int NOT NULL DEFAULT '0',
+  `ten_count` int NOT NULL DEFAULT '0',
+  `fifty_count` int NOT NULL DEFAULT '0',
+  `supply` tinyint(1) NOT NULL DEFAULT '0',
+  `ip` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 傾印資料表的資料 `money_supply`
+--
+
+INSERT INTO `money_supply` (`id`, `five`, `ten`, `fifty`, `five_count`, `ten_count`, `fifty_count`, `supply`, `ip`) VALUES
+(1, 0, 0, 0, 0, 0, 0, 0, '0');
 
 -- --------------------------------------------------------
 
@@ -341,6 +451,7 @@ CREATE TABLE IF NOT EXISTS `print_setting` (
   `print_coupon` int NOT NULL DEFAULT '1',
   `pay_left` int NOT NULL DEFAULT '500',
   `exit_left` int NOT NULL DEFAULT '0',
+  `ip` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -348,8 +459,8 @@ CREATE TABLE IF NOT EXISTS `print_setting` (
 -- 傾印資料表的資料 `print_setting`
 --
 
-INSERT INTO `print_setting` (`id`, `new_roll`, `warning`, `print_invoice`, `print_revenue`, `print_coupon`, `pay_left`, `exit_left`) VALUES
-(1, 500, 30, 1, 2, 1, 500, 0);
+INSERT INTO `print_setting` (`id`, `new_roll`, `warning`, `print_invoice`, `print_revenue`, `print_coupon`, `pay_left`, `exit_left`, `ip`) VALUES
+(1, 500, 30, 1, 2, 1, 500, 0, '192.168.51.252');
 
 -- --------------------------------------------------------
 
