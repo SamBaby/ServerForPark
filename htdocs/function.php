@@ -703,6 +703,22 @@ function carInsideUpdatePay($query)
 
     return $query;
 }
+function carInsideUpdatePayWithServerTime($query)
+{
+    $now = new DateTime(null, new DateTimeZone('Asia/Taipei'));
+
+    $query = sprintf(
+        "UPDATE `cars_inside` SET `time_pay` = '%s',`cost` = '%d',`discount` = '%d', `bill_number` = '%s', `payment`= '%s'   WHERE `car_number` = '%s';",
+        $now->format('Y-m-d H:i:s'),
+        $_POST['cost'],
+        $_POST['discount'],
+        $_POST['bill_number'],
+        $_POST['payment'],
+        $_POST['car_number']
+    );
+
+    return $query;
+}
 function carInsideUpdateNumber($query)
 {
     $query = sprintf(
@@ -854,6 +870,48 @@ function moneySupplyStart($query){
         $_GET['fifty']
     );
 
+    return $query;
+}
+function regularPassAdd($query)
+{
+    $query = sprintf(
+        "INSERT INTO regular_pass (car_number,customer_name,start_date,due_date,phone_number)
+        VALUES ('%s', '%s', '%s','%s','%s');",
+        $_GET['car_number'],
+        $_GET['customer_name'],
+        $_GET['start_date'],
+        $_GET['due_date'],
+        $_GET['phone_number']
+    );
+    return $query;
+}
+function regularPassUpdate($query)
+{
+    $query = sprintf(
+        "UPDATE regular_pass SET `car_number` = '%s' , `customer_name` = '%s' , `start_date`= '%s' , `due_date` = '%s' , `phone_number` = '%s'  WHERE id = %d;",
+        $_GET['car_number'],
+        $_GET['customer_name'],
+        $_GET['start_date'],
+        $_GET['due_date'],
+        $_GET['phone_number'],
+        $_GET['id'],
+    );
+    return $query;
+}
+function regularPassDelete($query)
+{
+    $query = sprintf(
+        "DELETE FROM regular_pass WHERE `id` = '%d';",
+        $_GET['id']
+    );
+    return $query;
+}
+function regularPassSingleSearch($query)
+{
+    $query = sprintf(
+        "SELECT * FROM regular_pass WHERE `car_number` = '%s';",
+        $_GET['car_number']
+    );
     return $query;
 }
 function moneySupplyStop($query){
@@ -1014,19 +1072,25 @@ if($conn){
             break;
         //月票新增
         case 'regular_pass_add':
-            # code...
+            $query = regularPassAdd($query);
+            $output = false;
             break;
         //月票修改
         case 'regular_pass_update':
-            # code...
+            $query = regularPassUpdate($query);
+            $output = false;
             break;
         //月票刪除
         case 'regular_pass_delete':
-            # code...
+            $query = regularPassDelete($query);
+            $output = false;
             break;
-        //月票刪除
+        //月票查詢
         case 'regular_pass_search':
-            # code...
+            $query = "SELECT * FROM `regular_pass`;";
+            break;
+        case 'regular_pass_single_search':
+            $query = regularPassSingleSearch($query);
             break;
         //停車位查詢
         case 'slot_search':
@@ -1074,6 +1138,11 @@ if($conn){
         //場內車子付款資料更新
         case 'cars_inside_update':
             $query = carInsideUpdatePay($query);
+            $output = false;
+            break;
+        //場內車子付款資料更新
+        case 'cars_inside_update_with_server_time':
+            $query = carInsideUpdatePayWithServerTime($query);
             $output = false;
             break;
         //場內車子付款資料更新

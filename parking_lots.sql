@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： 127.0.0.1:3306
--- 產生時間： 2024-06-17 01:36:31
+-- 產生時間： 2024-07-05 04:42:12
 -- 伺服器版本： 8.2.0
 -- PHP 版本： 8.2.13
 
@@ -471,7 +471,7 @@ INSERT INTO `print_setting` (`id`, `new_roll`, `warning`, `print_invoice`, `prin
 DROP TABLE IF EXISTS `regular_pass`;
 CREATE TABLE IF NOT EXISTS `regular_pass` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `car_number` int NOT NULL,
+  `car_number` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
   `customer_name` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `start_date` date NOT NULL,
   `due_date` date NOT NULL,
