@@ -16,6 +16,7 @@ class camStatus:
         self.carGio0 = 1 #Camera  Gio0 status
         self.carGio1 = 1 #Camera  Gio1 status
         self.refreshCarSlotBoolean = True
+        self.imageOpen = False
         
 class MyHandler(http.server.BaseHTTPRequestHandler):
     global cam_status
@@ -40,11 +41,13 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             response = {"error": "Invalid JSON"}
             self.wfile.write(json.dumps(response).encode('utf-8'))
             return
-
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
+        try:
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+        except:
+            print(response)
     def handle_request(self, data):
         if "AlarmInfoPlate" in data:
             response = self.check_car(data)
@@ -118,7 +121,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     break
         # GIO1 not triggered, dispose data
         if needPop:
-            cam_status[ip].needToClose = True
+            # cam_status[ip].needToClose = True
             cam_status[ip].carQueue.pop(0)
     def waitForGio1NotTriggered(self, ip):
         needPop = True
@@ -128,7 +131,25 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                 needPop = False
         # GIO1 not triggered, dispose data
         if needPop:
-            cam_status[ip].needToClose = True    
+            cam_status[ip].needToClose = True
+    def waitForBothGioNotTriggered(self, ip):
+        needClose = False
+        while(needClose == False and cam_status[ip].imageOpen == True):
+            needClose = True
+            for i in range(0, 200):
+                time.sleep(0.05)
+                if cam_status[ip].imageOpen == False:
+                    break
+                if cam_status[ip].carGio1 == 0 or cam_status[ip].carGio0 == 0:
+                    needClose = False
+                    break
+        # GIO1 not triggered, dispose data
+        if needClose == True:
+            cam_status[ip].serialDataToSend["0"].append(getCleanLEDSerialData())
+            setCarSlotsSmall(ip)
+            setCarSlotsSmall(ip)
+            cam_status[ip].needToClose = True
+            cam_status[ip].imageOpen = False
     def getHeartbeatResponse(self, ip):
         res = {
             "Response_Heartbeat": {
@@ -172,6 +193,8 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     "data": cam_status[ip].serialDataToSend["1"][0],
                     "dataLen": 38
                 })
+        if len(cam_status[ip].serialDataToSend["0"]) <= 0 and len(cam_status[ip].serialDataToSend["1"]) <= 0 and cam_status[ip].refreshCarSlotBoolean ==False and cam_status[ip].imageOpen == False:
+                cam_status[ip].refreshCarSlotBoolean = True
         return res
     def handleGioData(self, data):
         ip = data["AlarmGioIn"]["ipaddr"]
@@ -186,7 +209,8 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         else:
             original = cam_status[ip].carGio1
             cam_status[ip].carGio1 = serial_value
-            if original==0 and serial_value==1:
+            if original==0 and serial_value==1 and cam_status[ip].imageOpen == True:
+                cam_status[ip].imageOpen = False
                 cam_status[ip].needToClose = True
         return ""
     def getSerialDataResponse(self, data):
@@ -211,7 +235,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     "data": cam_status[ip].serialDataToSend["1"].pop(0),
                     "dataLen": 38
                 })
-            if len(cam_status[ip].serialDataToSend["0"]) <= 0 and len(cam_status[ip].serialDataToSend["1"]) <= 0 and cam_status[ip].refreshCarSlotBoolean ==False:
+            if len(cam_status[ip].serialDataToSend["0"]) <= 0 and len(cam_status[ip].serialDataToSend["1"]) <= 0 and cam_status[ip].refreshCarSlotBoolean ==False and cam_status[ip].imageOpen == False:
                 cam_status[ip].refreshCarSlotBoolean = True
         return res
     def check_car(self, data):
@@ -238,30 +262,33 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         read_gio = "0"
         if "read_gio" in cam:
             read_gio = cam["read_gio"]
+        cam_status[ip].refreshCarSlotBoolean = False
         if cam_in_out == "0":
-            cam_status[ip].refreshCarSlotBoolean = False
             if checkCanIn(data):
                 if read_gio == '1':
+                    if cam_status[ip].imageOpen == False:
+                        cam_status[ip].imageOpen = True
+                        threading.Thread(target=self.waitForBothGioNotTriggered, args=(ip,)).start()
                     cam_status[ip].serialDataToSend["0"].clear()
                     cam_status[ip].serialDataToSend["1"].clear()
                     cam_status[ip].carQueue.append(data)
                     updateCarInside(ip)
-                    threading.Thread(target=self.waitForGio1NotTriggered, args=(ip,)).start()
-                    response["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
-                    response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
-                    response["Response_AlarmInfoPlate"]["serialData"][1]["data"] = getCleanLEDSerialData()
-                    response["Response_AlarmInfoPlate"]["serialData"][1]["dataLen"] = 38
-                    displayWelcomeThreeTimes(ip, car_number)
+                    # threading.Thread(target=self.waitForGio1NotTriggered, args=(ip,)).start()
                     cam_status[ip].serialDataToSend["0"].append(getCleanLEDSerialData())
                     cam_status[ip].serialDataToSend["1"].append(getCleanLEDSerialData())
-                    setCarSlotsBig(ip)
-                    setCarSlotsSmall(ip)
-                    # refreshCarSlot(ip)
+                    # response["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
+                    # response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
+                    # response["Response_AlarmInfoPlate"]["serialData"][1]["data"] = getCleanLEDSerialData()
+                    # response["Response_AlarmInfoPlate"]["serialData"][1]["dataLen"] = 38
+                    displayWelcomeThreeTimes(ip, car_number)
                 else:
                     # if cam_status[ip].carGio0 != 0:
                     #     #gio0 in is not triggered
                     #     threading.Thread(target=self.waitForGio0Triggered, args=(cam_in_out, data, ip, car_number)).start()
                     #     return response
+                    if cam_status[ip].imageOpen == False:
+                        cam_status[ip].imageOpen = True
+                        threading.Thread(target=self.waitForBothGioNotTriggered, args=(ip,)).start()
                     cam_status[ip].carQueue.append(data)
                     threading.Thread(target=self.waitForGio1Triggered, args=(cam_in_out, ip,)).start()
                     # add serial0 data to WELCOME XXXXXXX
@@ -270,8 +297,6 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     response["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
                     response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
                     displayWelcomeThreeTimes(ip, car_number)
-                    cam_status[ip].serialDataToSend["0"].append(getCleanLEDSerialData())
-                    cam_status[ip].serialDataToSend["1"].append(getCleanLEDSerialData())
                 response["Response_AlarmInfoPlate"]["info"] = "ok"
             else:
                 cam_status[ip].serialDataToSend["0"].clear()
@@ -284,26 +309,30 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         else:
             if checkCanOut(data):
                 if read_gio == '1':
+                    if cam_status[ip].imageOpen == False:
+                        cam_status[ip].imageOpen = True
+                        threading.Thread(target=self.waitForBothGioNotTriggered, args=(ip,)).start()
                     cam_status[ip].serialDataToSend["0"].clear()
                     cam_status[ip].serialDataToSend["1"].clear()
                     cam_status[ip].carQueue.append(data)
                     updateHistory(ip)
-                    threading.Thread(target=self.waitForGio1NotTriggered, args=(ip,)).start()
-                    response["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
-                    response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
-                    response["Response_AlarmInfoPlate"]["serialData"][1]["data"] = getCleanLEDSerialData()
-                    response["Response_AlarmInfoPlate"]["serialData"][1]["dataLen"] = 38
-                    displayThankUThreeTimes(ip, car_number)
+                    # threading.Thread(target=self.waitForGio1NotTriggered, args=(ip,)).start()
                     cam_status[ip].serialDataToSend["0"].append(getCleanLEDSerialData())
                     cam_status[ip].serialDataToSend["1"].append(getCleanLEDSerialData())
-                    setCarSlotsBig(ip)
-                    setOutNormalScreen(ip)
-                    # refreshCarSlot(ip)
+                    # response["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
+                    # response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
+                    # response["Response_AlarmInfoPlate"]["serialData"][1]["data"] = getCleanLEDSerialData()
+                    # response["Response_AlarmInfoPlate"]["serialData"][1]["dataLen"] = 38
+                    displayThankUThreeTimes(ip, car_number)
+                    # setOutNormalScreen(ip)
                 else:
                     # if cam_status[ip].carGio0 != 0:
                     #     #gio0 out is not triggered
                     #     threading.Thread(target=self.waitForGio0Triggered, args=(cam_in_out, data, ip, car_number)).start()
                     #     return response
+                    if cam_status[ip].imageOpen == False:
+                        cam_status[ip].imageOpen = True
+                        threading.Thread(target=self.waitForBothGioNotTriggered, args=(ip,)).start()
                     cam_status[ip].carQueue.append(data)
                     threading.Thread(target=self.waitForGio1Triggered, args=(cam_in_out, ip,)).start()
                     #set thank u to XXXXXXX
@@ -311,7 +340,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
                     cam_status[ip].serialDataToSend["0"].clear()
                     cam_status[ip].serialDataToSend["1"].clear()
-                    setThankUSerialData(ip)
+                    displayThankUThreeTimes(ip)
                     setCarNumberSerialData(ip, car_number)
                 response["Response_AlarmInfoPlate"]["info"] = "ok"
             else:
@@ -322,8 +351,6 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                 response["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
                 response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
                 displayNeedToPayThreeTimes(ip, car_number)
-                cam_status[ip].serialDataToSend["0"].append(getCleanLEDSerialData())
-                setOutNormalScreen(ip)
         return response
 def displayWelcomeThreeTimes(ip, car_number):
     for i in range(0,3):
@@ -345,8 +372,14 @@ def updateCarInside(ip):
     size = "0"
     color = reselt["carColor"]
     car_number = reselt["license"]
-    file_name = "/storage/sdcard/Cars/" + car_number + ".png"
     
+    if isCarInside(car_number) == True:
+        index = 1
+        car_number = reselt["license"] + '-' + str(index)
+        while(isCarInside(car_number) == True):
+            index = index + 1
+            car_number = reselt["license"] + '-' + str(index)
+    file_name = "/storage/sdcard/Cars/" + car_number + ".png"
     if "imageFile" in reselt:
         image_string = reselt["imageFile"]
         #add new car and open gate
@@ -406,16 +439,8 @@ def checkCanOut(data):
             payTime = datetime.strptime(time_pay, "%Y-%m-%d %H:%M:%S")
             diffTime = nowTime-payTime
             seconds = diffTime.seconds
-            if seconds <= 900:
+            if seconds <= getExitCountTime():
                 ret = True
-    # if carInside is not None and carInside["time_pay"] is not None and carInside["time_pay"] != "":
-    #     time_pay = carInside["time_pay"]
-    #     nowTime = datetime.now()
-    #     payTime = datetime.strptime(time_pay, "%Y-%m-%d %H:%M:%S")
-    #     diffTime = nowTime-payTime
-    #     seconds = diffTime.seconds
-    #     if seconds <= 900:
-    #         ret = True
     return ret
 def checkIsRegular(carNumber):
     #get total cat slots
@@ -429,6 +454,21 @@ def checkIsRegular(carNumber):
             return regular_data
     except json.JSONDecodeError:
         return None
+#check available slots
+def getExitCountTime():
+    ret = 900
+    myobj = {'func': 'fee_search'}
+    x = requests.get(url, params = myobj)
+    try:
+        data = json.loads(x.text)
+        if len(data) > 0:
+            data = list(data)
+            fee_data = data[0]
+            return int(fee_data['enter_time_not_count']) * 60
+        else:
+            return 900
+    except json.JSONDecodeError:
+        return 900
 #check available slots
 def slotSearch():
     slot = 0
@@ -444,7 +484,7 @@ def slotSearch():
             slot = slot + int(slot_data['pregnant_slot'])
             slot = slot + int(slot_data['disabled_slot'])
             slot = slot + int(slot_data['charging_slot'])
-            slot = slot + int(slot_data['reserved_slot'])
+            slot = slot - int(slot_data['reserved_slot'])
             slot = slot + int(slot_data['car_left'])
             slot = slot + int(slot_data['pregnant_left'])
             slot = slot + int(slot_data['charging_left'])
@@ -688,6 +728,9 @@ def string_to_int_Big(s):
         raise ValueError("Input should be a digit between '0' and '9'")
 def led_refresh_loop():
     cams = getIpCams()
+    if len(cams) != len(cam_status):
+        for cam in cams:
+            setCams(cam["ip"])
     for cam in cams:
         ip = cam["ip"]
         in_out = cam["in_out"]
@@ -755,7 +798,7 @@ def run(server_class=http.server.HTTPServer, handler_class=MyHandler, port=8081)
     httpd.serve_forever()
     
 #initialize variables
-url = 'http://localhost:8080/function.php'
+url = 'http://192.168.0.252:8080/function.php'
 pic_dir = "/storage/sdcard/Cars"
 backup_dir = "/storage/sdcard/Cars_backup"
 os.makedirs(pic_dir, exist_ok=True)

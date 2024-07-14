@@ -545,7 +545,8 @@ function historyDateSearch($query)
 
     $query = sprintf(
         "SELECT * FROM history
-        WHERE time_in BETWEEN '%s' AND '%s';",
+        WHERE time_in BETWEEN '%s' AND '%s'
+        ORDER BY UNIX_TIMESTAMP(time_in) DESC;",
         $start,
         $end
     );
@@ -613,6 +614,7 @@ function payDateSearch($query)
             $query .= sprintf(" AND payment = '%s'", $payment);
         }
     }
+    $query .= " ORDER BY UNIX_TIMESTAMP(time_pay) DESC";
 
     return $query;
 }
@@ -699,6 +701,15 @@ function carInsideUpdatePay($query)
         $_POST['bill_number'],
         $_POST['payment'],
         $_POST['car_number']
+    );
+
+    return $query;
+}
+function carInsideDeletePay($query)
+{
+    $query = sprintf(
+        "UPDATE `cars_inside` SET `time_pay` = NULL WHERE `car_number` = '%s';",
+        $_GET['car_number']
     );
 
     return $query;
@@ -832,7 +843,6 @@ function moneyBasicUpdate($query){
         $_GET['ten_alert'],
         $_GET['fifty_alert']
     );
-    printf($query);
     return $query;
 }
 function moneyRefundUpdate($query){
@@ -1037,7 +1047,7 @@ if($conn){
             break;
         //查詢所有歷史紀錄
         case 'history_search':
-            $query = "SELECT * FROM `history`;";
+            $query = "SELECT * FROM `history` ORDER BY UNIX_TIMESTAMP(time_in) DESC;";
             break;
         //查詢期間歷史紀錄
         case 'history_date_search':
@@ -1059,7 +1069,7 @@ if($conn){
             break;
         //查詢所有繳費紀錄
         case 'pay_search':
-            $query = "SELECT * FROM `pay_history`;";
+            $query = "SELECT * FROM `pay_history` ORDER BY UNIX_TIMESTAMP(time_pay) DESC;";
             break;
         //查詢期間內繳費紀錄
         case 'pay_dates_search':
@@ -1143,6 +1153,11 @@ if($conn){
         //場內車子付款資料更新
         case 'cars_inside_update_with_server_time':
             $query = carInsideUpdatePayWithServerTime($query);
+            $output = false;
+            break;
+        //場內車子付款資料刪除
+        case 'cars_inside_pay_delete':
+            $query = carInsideDeletePay($query);
             $output = false;
             break;
         //場內車子付款資料更新
@@ -1261,6 +1276,10 @@ if($conn){
             $query = moneySupplyStop($query);
             $output = false;
             break;
+        case 'get_server_time':
+            $now = new DateTime(null, new DateTimeZone('Asia/Taipei'));
+            $query = $now->format('Y-m-d H:i:s');
+            break;
         default:
             # code...
             break;
@@ -1268,6 +1287,8 @@ if($conn){
     
     if(!(empty($query))){
         if($func == 'get_car_image'){
+            echo $query;
+        }elseif($func == 'get_server_time'){
             echo $query;
         }else{
             $result = mysqli_query($conn,$query);
