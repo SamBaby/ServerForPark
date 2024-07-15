@@ -17,6 +17,7 @@ class camStatus:
         self.carGio1 = 1 #Camera  Gio1 status
         self.refreshCarSlotBoolean = True
         self.imageOpen = False
+        self.carFullQueue = []
         
 class MyHandler(http.server.BaseHTTPRequestHandler):
     global cam_status
@@ -171,6 +172,22 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             close = cam["close"]
             if close == "1":
                 updateCamNotToClose(ip)
+        if len(cam_status[ip].carFullQueue) > 0 and checkCanIn():
+            data = cam_status[ip].carFullQueue.pop()
+            reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
+            car_number = reselt["license"]
+            cam_status[ip].carQueue.append(data)
+            updateCarInside(ip)
+            cam_status[ip].refreshCarSlotBoolean = False
+            if cam_status[ip].imageOpen == False:
+                cam_status[ip].imageOpen = True
+                threading.Thread(target=self.waitForBothGioNotTriggered, args=(ip,)).start()
+            cam_status[ip].serialDataToSend["0"].clear()
+            cam_status[ip].serialDataToSend["1"].clear()
+            cam_status[ip].serialDataToSend["0"].append(getCleanLEDSerialData())
+            cam_status[ip].serialDataToSend["1"].append(getCleanLEDSerialData())
+            displayWelcomeThreeTimes(ip, car_number)
+            cam_status[ip].needToOpen = True
         cam_status[ip].needToOpen = cam_status[ip].needToOpen or open == "1"
         if cam_status[ip].needToOpen:
             cam_status[ip].needToOpen = False
@@ -205,7 +222,10 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         if cam is None:
             return ""
         if serial_num == 0:
+            original = cam_status[ip].carGio0
             cam_status[ip].carGio0 = serial_value
+            if original==0 and serial_value==1:
+                cam_status[ip].carFullQueue.clear()
         else:
             original = cam_status[ip].carGio1
             cam_status[ip].carGio1 = serial_value
@@ -252,6 +272,8 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
         ip = data["AlarmInfoPlate"]["ipaddr"]
         car_number = reselt["license"]
+        if car_number == 'No Plate' or car_number == "":
+            return response
         # get ip cam data
         cam = getIpCam(ip)
         if cam is None:
@@ -264,16 +286,16 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             read_gio = cam["read_gio"]
         cam_status[ip].refreshCarSlotBoolean = False
         if cam_in_out == "0":
-            if checkCanIn(data):
+            if checkCanIn():
                 if read_gio == '1':
                     if cam_status[ip].imageOpen == False:
                         cam_status[ip].imageOpen = True
                         threading.Thread(target=self.waitForBothGioNotTriggered, args=(ip,)).start()
-                    cam_status[ip].serialDataToSend["0"].clear()
-                    cam_status[ip].serialDataToSend["1"].clear()
                     cam_status[ip].carQueue.append(data)
                     updateCarInside(ip)
                     # threading.Thread(target=self.waitForGio1NotTriggered, args=(ip,)).start()
+                    cam_status[ip].serialDataToSend["0"].clear()
+                    cam_status[ip].serialDataToSend["1"].clear()
                     cam_status[ip].serialDataToSend["0"].append(getCleanLEDSerialData())
                     cam_status[ip].serialDataToSend["1"].append(getCleanLEDSerialData())
                     # response["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
@@ -306,6 +328,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                 response["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
                 response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
                 setCarSlotsSmall(ip)
+                cam_status[ip].carFullQueue.append(data)
         else:
             if checkCanOut(data):
                 if read_gio == '1':
@@ -406,13 +429,8 @@ def updateHistory(ip):
         with open(backup_file_name, "wb") as fh:
             fh.write(base64.decodebytes(str.encode(image_string)))
 #check the car can enter(check slots and cars_inside)
-def checkCanIn(data):
+def checkCanIn():
     ret = False
-    #car detailed data
-    reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
-    car_number = reselt["license"]
-    if car_number == 'No Plate' or car_number == "":
-        return ret
     # carInside = getCarInside(car_number)
     available = slotSearch()
     if available > 0:
@@ -798,7 +816,7 @@ def run(server_class=http.server.HTTPServer, handler_class=MyHandler, port=8081)
     httpd.serve_forever()
     
 #initialize variables
-url = 'http://192.168.0.252:8080/function.php'
+url = 'http://192.168.1.200:8080/function.php'
 pic_dir = "/storage/sdcard/Cars"
 backup_dir = "/storage/sdcard/Cars_backup"
 os.makedirs(pic_dir, exist_ok=True)
