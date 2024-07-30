@@ -65,8 +65,8 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         pass
     #waiting Gio0 be triggered and add car data to queue
     def waitForGio0Triggered(self, in_out, data, ip, car_number):
-        for i in range(0, 200):
-            time.sleep(0.05)
+        for i in range(0, 50):
+            time.sleep(0.2)
             if in_out == "0":
                 if cam_status[ip].carGio0 == 0:
                     cam_status[ip].carQueue.append(data)
@@ -92,8 +92,8 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     break
     def waitForGio1Triggered(self, in_out, ip):
         needPop = True
-        for i in range(0, 400):
-            time.sleep(0.05)
+        for i in range(0, 50):
+            time.sleep(0.2)
             if in_out == "0":
                 if cam_status[ip].carGio1 == 0:
                     updateCarInside(ip)
@@ -126,8 +126,8 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             cam_status[ip].carQueue.pop(0)
     def waitForGio1NotTriggered(self, ip):
         needPop = True
-        for i in range(0, 400):
-            time.sleep(0.05)
+        for i in range(0, 50):
+            time.sleep(0.2)
             if cam_status[ip].carGio1 == 0:
                 needPop = False
         # GIO1 not triggered, dispose data
@@ -137,20 +137,22 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         needClose = False
         while(needClose == False and cam_status[ip].imageOpen == True):
             needClose = True
-            for i in range(0, 200):
-                time.sleep(0.05)
+            for i in range(0, 50):
+                time.sleep(0.2)
                 if cam_status[ip].imageOpen == False:
                     break
                 if cam_status[ip].carGio1 == 0 or cam_status[ip].carGio0 == 0:
+                    cam_status[ip].imageOpen = True
                     needClose = False
                     break
         # GIO1 not triggered, dispose data
         if needClose == True:
+            if cam_status[ip].imageOpen == True:
+                cam_status[ip].needToClose = True
+                cam_status[ip].imageOpen = False
             cam_status[ip].serialDataToSend["0"].append(getCleanLEDSerialData())
             setCarSlotsSmall(ip)
             setCarSlotsSmall(ip)
-            cam_status[ip].needToClose = True
-            cam_status[ip].imageOpen = False
     def getHeartbeatResponse(self, ip):
         res = {
             "Response_Heartbeat": {
@@ -231,7 +233,6 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             cam_status[ip].carGio1 = serial_value
             if original==0 and serial_value==1 and cam_status[ip].imageOpen == True:
                 cam_status[ip].imageOpen = False
-                cam_status[ip].needToClose = True
         return ""
     def getSerialDataResponse(self, data):
         res = {
@@ -320,6 +321,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
                     displayWelcomeThreeTimes(ip, car_number)
                 response["Response_AlarmInfoPlate"]["info"] = "ok"
+                cam_status[ip].needToOpen = True
             else:
                 cam_status[ip].serialDataToSend["0"].clear()
                 cam_status[ip].serialDataToSend["1"].clear()
@@ -366,6 +368,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     displayThankUThreeTimes(ip)
                     setCarNumberSerialData(ip, car_number)
                 response["Response_AlarmInfoPlate"]["info"] = "ok"
+                cam_status[ip].needToOpen = True
             else:
                 cam_status[ip].serialDataToSend["0"].clear()
                 cam_status[ip].serialDataToSend["1"].clear()
