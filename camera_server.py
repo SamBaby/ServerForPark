@@ -321,7 +321,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
                     displayWelcomeThreeTimes(ip, car_number)
                 response["Response_AlarmInfoPlate"]["info"] = "ok"
-                cam_status[ip].needToOpen = True
+                # cam_status[ip].needToOpen = True
             else:
                 cam_status[ip].serialDataToSend["0"].clear()
                 cam_status[ip].serialDataToSend["1"].clear()
@@ -368,7 +368,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     displayThankUThreeTimes(ip)
                     setCarNumberSerialData(ip, car_number)
                 response["Response_AlarmInfoPlate"]["info"] = "ok"
-                cam_status[ip].needToOpen = True
+                # cam_status[ip].needToOpen = True
             else:
                 cam_status[ip].serialDataToSend["0"].clear()
                 cam_status[ip].serialDataToSend["1"].clear()
