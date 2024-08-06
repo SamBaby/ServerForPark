@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： 127.0.0.1:3306
--- 產生時間： 2024-07-05 04:42:12
+-- 產生時間： 2024-08-06 02:27:49
 -- 伺服器版本： 8.2.0
 -- PHP 版本： 8.2.13
 
@@ -315,6 +315,28 @@ CREATE TABLE IF NOT EXISTS `ip_cam` (
 INSERT INTO `ip_cam` (`name`, `ip`, `in_out`, `pay`, `open`, `close`, `number`, `read_gio`) VALUES
 ('t1', '192.168.1.100', 0, 1, 0, 0, 0, 1),
 ('t2', '192.168.1.110', 1, 1, 0, 0, 0, 1);
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `line_pay`
+--
+
+DROP TABLE IF EXISTS `line_pay`;
+CREATE TABLE IF NOT EXISTS `line_pay` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `ChannelId` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ChannelSecret` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `test` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 傾印資料表的資料 `line_pay`
+--
+
+INSERT INTO `line_pay` (`id`, `ChannelId`, `ChannelSecret`, `test`) VALUES
+(1, '2005978722', 'be633699f874267a584d14d1c9e1bf16', 1);
 
 -- --------------------------------------------------------
 

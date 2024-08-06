@@ -931,6 +931,16 @@ function moneySupplyStop($query){
 
     return $query;
 }
+function LinePayUpdate($query){
+    $query = sprintf(
+        "UPDATE `line_pay` SET `ChannelId` = '%s', `ChannelSecret`= '%s' `test` = '%d' WHERE `id` = 1;",
+        $_GET['ChannelId'],
+        $_GET['ChannelSecret'],
+        $_GET['test']
+    );
+
+    return $query;
+}
 $func = $_GET['func'];
 $query = '';
 $output = true;
@@ -1279,6 +1289,13 @@ if($conn){
         case 'get_server_time':
             $now = new DateTime(null, new DateTimeZone('Asia/Taipei'));
             $query = $now->format('Y-m-d H:i:s');
+            break;
+        case 'line_pay_search':
+            $query = "SELECT * FROM line_pay WHERE `id` = '1';";
+            break;
+        case 'line_pay_update':
+            $query = LinePayUpdate($query);
+            $output = false;
             break;
         default:
             # code...

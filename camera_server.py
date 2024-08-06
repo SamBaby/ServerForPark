@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 import time
 import threading
+import shutil
 class camStatus:
     def __init__(self):
         self.needToOpen = False
@@ -405,7 +406,9 @@ def updateCarInside(ip):
         while(isCarInside(car_number) == True):
             index = index + 1
             car_number = reselt["license"] + '-' + str(index)
-    file_name = "/storage/sdcard/Cars/" + car_number + ".png"
+    if not os.path.exists(pic_dir):
+        os.makedirs(pic_dir, exist_ok=True)
+    file_name = pic_dir + "/" + car_number + ".png"
     if "imageFile" in reselt:
         image_string = reselt["imageFile"]
         #add new car and open gate
@@ -419,8 +422,8 @@ def updateHistory(ip):
     data = cam_status[ip].carQueue.pop(0)
     reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
     car_number = reselt["license"]
-    file_name = "/storage/sdcard/Cars/" + car_number + ".png"
-    backup_file_name = "/storage/sdcard/Cars_backup/" + nowTime.strftime("%Y_%m_%d_%H_%M_%S") + "_" + car_number + ".png"
+    file_name = pic_dir + "/" + car_number + ".png"
+    backup_file_name = getBackUpDirectory() + "/" + nowTime.strftime("%Y_%m_%d_%H_%M_%S") + "_" + car_number
     carInside = getCarInside(car_number)
     #close gate and show no available car slot
     addHistory(carInside, nowTime.strftime("%Y-%m-%d %H:%M:%S"), backup_file_name)
@@ -428,9 +431,23 @@ def updateHistory(ip):
     if "imageFile" in reselt:
         image_string = reselt["imageFile"]
         if os.path.exists(file_name):
-            os.remove(file_name)
-        with open(backup_file_name, "wb") as fh:
+            shutil.move(file_name, backup_file_name + "_in.png")
+            # os.remove(file_name)
+        with open(backup_file_name+ "_out.png", "wb") as fh:
             fh.write(base64.decodebytes(str.encode(image_string)))
+#get the path back-up pic should be stored
+def getBackUpDirectory():
+    year_dir = backup_dir + '/' + nowTime.strftime("%Y")
+    month_dir = year_dir + '/' + nowTime.strftime("%m")
+    day_dir = month_dir + '/' +  nowTime.strftime("%d")
+    
+    if not os.path.exists(year_dir):
+        os.makedirs(year_dir, exist_ok=True)
+    if not os.path.exists(month_dir):
+        os.makedirs(month_dir, exist_ok=True)
+    if not os.path.exists(day_dir):
+        os.makedirs(day_dir, exist_ok=True)
+    return day_dir
 #check the car can enter(check slots and cars_inside)
 def checkCanIn():
     ret = False
@@ -820,10 +837,10 @@ def run(server_class=http.server.HTTPServer, handler_class=MyHandler, port=8081)
     
 #initialize variables
 url = 'http://192.168.1.200:8080/function.php'
-pic_dir = "/storage/sdcard/Cars"
-backup_dir = "/storage/sdcard/Cars_backup"
-os.makedirs(pic_dir, exist_ok=True)
-os.makedirs(backup_dir, exist_ok=True)
+pic_dir = "C:/Users/samuel/Desktop/Cars/"
+backup_dir = "C:/Users/samuel/Desktop/Cars_backup"
+# os.makedirs(pic_dir, exist_ok=True)
+# os.makedirs(backup_dir, exist_ok=True)
 keepTry = True
 while(keepTry == True):
     time.sleep(1)
