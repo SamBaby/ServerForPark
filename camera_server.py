@@ -322,7 +322,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
                     displayWelcomeThreeTimes(ip, car_number)
                 response["Response_AlarmInfoPlate"]["info"] = "ok"
-                # cam_status[ip].needToOpen = True
+                cam_status[ip].needToOpen = True
             else:
                 cam_status[ip].serialDataToSend["0"].clear()
                 cam_status[ip].serialDataToSend["1"].clear()
@@ -369,7 +369,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     displayThankUThreeTimes(ip)
                     setCarNumberSerialData(ip, car_number)
                 response["Response_AlarmInfoPlate"]["info"] = "ok"
-                # cam_status[ip].needToOpen = True
+                cam_status[ip].needToOpen = True
             else:
                 cam_status[ip].serialDataToSend["0"].clear()
                 cam_status[ip].serialDataToSend["1"].clear()
@@ -591,14 +591,24 @@ def addHistory(car_data, time_out, path):
     myobj["time_in"] = car_data["time_in"]
     myobj["time_out"] = time_out
     myobj["time_pay"] = car_data["time_pay"]
+    if myobj["time_pay"] is None:
+        myobj["time_pay"] = time_out
     myobj["cost"] = car_data["cost"]
+    if myobj["cost"] is None:
+        myobj["cost"] = 0
     myobj["bill_number"] = car_data["bill_number"]
+    if myobj["bill_number"] is None:
+        myobj["bill_number"] = "None"
     myobj["payment"] = car_data["payment"]
+    if myobj["payment"] is None:
+        myobj["payment"] = "R"
     myobj["artificial"] = car_data["artificial"]
     myobj["type"] = car_data["type"]
     myobj["color"] = car_data["color"]
     myobj["path"] = path
-    x = requests.get(url, params = myobj)
+    x = requests.post(url + "?func=history_add", data = myobj)
+    
+    print(x)
 #get cam with certain ip in database
 def getIpCam(ip):
     myobj = {'func': 'cam_single_search'}

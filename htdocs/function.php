@@ -574,17 +574,17 @@ function historyAdd($query){
     $query = sprintf(
         "INSERT INTO history (car_number,time_in,time_out,time_pay,cost,bill_number,payment,artificial,type,color,picture_url)
         VALUES ('%s', '%s', '%s','%s','%s','%s','%s','%s','%s','%s','%s');",
-        $_GET['car_number'],
-        $_GET['time_in'],
-        $_GET['time_out'],
-        $_GET['time_pay'],
-        $_GET['cost'],
-        $_GET['bill_number'],
-        $_GET['payment'],
-        $_GET['artificial'],
-        $_GET['type'],
-        $_GET['color'],
-        $_GET['path']
+        $_POST['car_number'],
+        $_POST['time_in'],
+        $_POST['time_out'],
+        $_POST['time_pay'],
+        $_POST['cost'],
+        $_POST['bill_number'],
+        $_POST['payment'],
+        $_POST['artificial'],
+        $_POST['type'],
+        $_POST['color'],
+        $_POST['path']
     );
 
     return $query;
