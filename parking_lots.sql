@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： 127.0.0.1:3306
--- 產生時間： 2024-08-06 02:27:49
+-- 產生時間： 2024-08-08 06:53:23
 -- 伺服器版本： 8.2.0
 -- PHP 版本： 8.2.13
 
@@ -91,6 +91,10 @@ CREATE TABLE IF NOT EXISTS `company_info` (
   `standby_sec` int DEFAULT '0',
   `auto_upload_server` tinyint(1) NOT NULL DEFAULT '0',
   `standby_play` tinyint(1) NOT NULL DEFAULT '0',
+  `parking_id` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `parking_area` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `parking_address` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `parking_apikey` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -98,8 +102,8 @@ CREATE TABLE IF NOT EXISTS `company_info` (
 -- 傾印資料表的資料 `company_info`
 --
 
-INSERT INTO `company_info` (`id`, `lot_name`, `company_name`, `company_address`, `company_phone`, `server_token`, `cht_chat_id`, `standby_path`, `standby_sec`, `auto_upload_server`, `standby_play`) VALUES
-(1, 'ParkJohn', 'ParkJohn', 'Taichung', '1', '2', '3', '4', 5, 1, 1);
+INSERT INTO `company_info` (`id`, `lot_name`, `company_name`, `company_address`, `company_phone`, `server_token`, `cht_chat_id`, `standby_path`, `standby_sec`, `auto_upload_server`, `standby_play`, `parking_id`, `parking_area`, `parking_address`, `parking_apikey`) VALUES
+(1, 'ParkJohn', 'ParkJohn', 'Taichung', '1', '2', '3', '4', 5, 1, 1, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -336,7 +340,7 @@ CREATE TABLE IF NOT EXISTS `line_pay` (
 --
 
 INSERT INTO `line_pay` (`id`, `ChannelId`, `ChannelSecret`, `test`) VALUES
-(1, '2005978722', 'be633699f874267a584d14d1c9e1bf16', 1);
+(1, '', '', 1);
 
 -- --------------------------------------------------------
 

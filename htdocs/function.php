@@ -63,7 +63,7 @@ function feeUpdate($query)
 function company_info_Update($query)
 {
     $query = sprintf(
-        "UPDATE company_info SET lot_name = '%s', company_name = '%s', company_address = '%s', company_phone = '%s', server_token = '%s', cht_chat_id = '%s', standby_path = '%s', standby_sec = '%d', auto_upload_server = '%d', standby_play = '%d' WHERE company_info.id = 1",
+        "UPDATE company_info SET lot_name = '%s', company_name = '%s', company_address = '%s', company_phone = '%s', server_token = '%s', cht_chat_id = '%s', standby_path = '%s', standby_sec = '%d', auto_upload_server = '%d', standby_play = '%d', parking_id = '%s', parking_area = '%s', parking_address = '%s', parking_apikey = '%s' WHERE company_info.id = 1",
         $_GET['lot_name'],
         $_GET['company_name'],
         $_GET['company_address'],
@@ -73,7 +73,11 @@ function company_info_Update($query)
         $_GET['standby_path'],
         $_GET['standby_sec'],
         $_GET['auto_upload_server'],
-        $_GET['standby_play']
+        $_GET['standby_play'],
+        $_GET['parking_id'],
+        $_GET['parking_area'],
+        $_GET['parking_address'],
+        $_GET['parking_apikey']
     );
     return $query;
 }

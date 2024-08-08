@@ -440,7 +440,8 @@ def getBackUpDirectory():
     year_dir = backup_dir + '/' + nowTime.strftime("%Y")
     month_dir = year_dir + '/' + nowTime.strftime("%m")
     day_dir = month_dir + '/' +  nowTime.strftime("%d")
-    
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir, exist_ok=True)
     if not os.path.exists(year_dir):
         os.makedirs(year_dir, exist_ok=True)
     if not os.path.exists(month_dir):
@@ -837,8 +838,8 @@ def run(server_class=http.server.HTTPServer, handler_class=MyHandler, port=8081)
     
 #initialize variables
 url = 'http://192.168.1.200:8080/function.php'
-pic_dir = "C:/Users/samuel/Desktop/Cars/"
-backup_dir = "C:/Users/samuel/Desktop/Cars_backup"
+pic_dir = "/storage/sd-ext/Cars/"
+backup_dir = "/storage/sd-ext/Cars_backup"
 # os.makedirs(pic_dir, exist_ok=True)
 # os.makedirs(backup_dir, exist_ok=True)
 keepTry = True
