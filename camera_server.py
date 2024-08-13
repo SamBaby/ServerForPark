@@ -19,6 +19,7 @@ class camStatus:
         self.refreshCarSlotBoolean = True
         self.imageOpen = False
         self.carFullQueue = []
+        self.serialStop = False
         
 class MyHandler(http.server.BaseHTTPRequestHandler):
     global cam_status
@@ -197,13 +198,43 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         cam_status[ip].needToOpen = cam_status[ip].needToOpen or open == "1"
         #open the gate with json info = "ok"
         if cam_status[ip].needToOpen:
-            cam_status[ip].needToOpen = False
-            res["Response_Heartbeat"]["info"] = "ok"
+            if cam_status[ip].serialStop:
+                cam_status[ip].needToOpen = False
+                cam_status[ip].serialStop = False
+                res["Response_Heartbeat"]["info"] = "ok"
+            else:
+                res["Response_Heartbeat"]["serialData"].append({
+                    "serialChannel": 0,
+                    "data": "",
+                    "dataLen": 0
+                })
+                res["Response_Heartbeat"]["serialData"].append({
+                    "serialChannel": 1,
+                    "data": "",
+                    "dataLen": 0
+                })
+                cam_status[ip].serialStop = True
+            return res
         cam_status[ip].needToClose = cam_status[ip].needToClose or close == "1"
         #close the gate with json shutoff = "ok
         if cam_status[ip].needToClose:
-            cam_status[ip].needToClose = False
-            res["Response_Heartbeat"]["shutoff"] = "ok"
+            if cam_status[ip].serialStop:
+                cam_status[ip].needToClose = False
+                cam_status[ip].serialStop = False
+                res["Response_Heartbeat"]["shutoff"] = "ok"
+            else:
+                res["Response_Heartbeat"]["serialData"].append({
+                    "serialChannel": 0,
+                    "data": "",
+                    "dataLen": 0
+                })
+                res["Response_Heartbeat"]["serialData"].append({
+                    "serialChannel": 1,
+                    "data": "",
+                    "dataLen": 0
+                })
+                cam_status[ip].serialStop = True
+            return res
         #check if heartbeat has serial data
         if ip in cam_status:
             if len(cam_status[ip].serialDataToSend["0"]) > 0:
@@ -252,20 +283,24 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         }
         ip = data["SerialData"]["ipaddr"]
         if ip in cam_status:
-            if len(cam_status[ip].serialDataToSend["0"]) > 0:
-                res["Response_SerialData"]["serialData"].append({
-                    "serialChannel": 0,
-                    "data": cam_status[ip].serialDataToSend["0"].pop(0),
-                    "dataLen": 38
-                })
-            if len(cam_status[ip].serialDataToSend["1"]) > 0:
-                res["Response_SerialData"]["serialData"].append({
-                    "serialChannel": 1,
-                    "data": cam_status[ip].serialDataToSend["1"].pop(0),
-                    "dataLen": 38
-                })
-            if len(cam_status[ip].serialDataToSend["0"]) <= 0 and len(cam_status[ip].serialDataToSend["1"]) <= 0 and cam_status[ip].refreshCarSlotBoolean ==False and cam_status[ip].imageOpen == False:
-                cam_status[ip].refreshCarSlotBoolean = True
+            if cam_status[ip].needToOpen:
+                cam_status[ip].serialStop = True
+                return res
+            else:
+                if len(cam_status[ip].serialDataToSend["0"]) > 0:
+                    res["Response_SerialData"]["serialData"].append({
+                        "serialChannel": 0,
+                        "data": cam_status[ip].serialDataToSend["0"].pop(0),
+                        "dataLen": 38
+                    })
+                if len(cam_status[ip].serialDataToSend["1"]) > 0:
+                    res["Response_SerialData"]["serialData"].append({
+                        "serialChannel": 1,
+                        "data": cam_status[ip].serialDataToSend["1"].pop(0),
+                        "dataLen": 38
+                    })
+                if len(cam_status[ip].serialDataToSend["0"]) <= 0 and len(cam_status[ip].serialDataToSend["1"]) <= 0 and cam_status[ip].refreshCarSlotBoolean ==False and cam_status[ip].imageOpen == False:
+                    cam_status[ip].refreshCarSlotBoolean = True
         return res
     # handle AlarmInfoPlate request from ip-cam, and return a response
     def check_car(self, data):
@@ -332,7 +367,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     response["Response_AlarmInfoPlate"]["serialData"][0]["data"] = getCleanLEDSerialData()
                     response["Response_AlarmInfoPlate"]["serialData"][0]["dataLen"] = 38
                     displayWelcomeThreeTimes(ip, car_number)
-                response["Response_AlarmInfoPlate"]["info"] = "ok"
+                response["Response_AlarmInfoPlate"]["info"] = "no"
                 cam_status[ip].needToOpen = True
             else:
                 cam_status[ip].serialDataToSend["0"].clear()
@@ -381,7 +416,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     cam_status[ip].serialDataToSend["1"].clear()
                     displayThankUThreeTimes(ip)
                     setCarNumberSerialData(ip, car_number)
-                response["Response_AlarmInfoPlate"]["info"] = "ok"
+                response["Response_AlarmInfoPlate"]["info"] = "no"
                 cam_status[ip].needToOpen = True
             else:
                 #if the car is not allowed to out, show need-to-play on LED
