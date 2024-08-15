@@ -937,7 +937,7 @@ function moneySupplyStop($query){
 }
 function LinePayUpdate($query){
     $query = sprintf(
-        "UPDATE `line_pay` SET `ChannelId` = '%s', `ChannelSecret`= '%s' `test` = '%d' WHERE `id` = 1;",
+        "UPDATE `line_pay` SET `ChannelId` = '%s', `ChannelSecret`= '%s', `test` = '%d' WHERE `id` = 1;",
         $_GET['ChannelId'],
         $_GET['ChannelSecret'],
         $_GET['test']
