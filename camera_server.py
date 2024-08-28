@@ -469,6 +469,7 @@ def updateCarInside(ip):
         addCarInside(car_number, "A", file_name, size, color)
 #update database after car go out
 def updateHistory(ip):
+    nowTime = datetime.now()
     data = cam_status[ip].carQueue.pop(0)
     reselt = data["AlarmInfoPlate"]["result"]["PlateResult"]
     car_number = reselt["license"]
@@ -640,6 +641,7 @@ def deleteCarInside(car_number):
     x = requests.get(url, params = myobj)
 #add car to history after exiting
 def addHistory(car_data, time_out, path):
+    print(time_out)
     myobj = {'func': 'history_add'}
     myobj["car_number"] = car_data["car_number"]
     myobj["time_in"] = car_data["time_in"]
