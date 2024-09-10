@@ -589,6 +589,64 @@ function historyAdd($query){
 
     return $query;
 }
+function serverHistoryDateSearch($query)
+{
+    $start = '';
+    $end = '';
+    if (!empty($_POST['start'])) {
+        $start = $_POST['start'];
+    }
+    if (!empty($_POST['end'])) {
+        $end = $_POST['end'];
+    }
+
+    $query = sprintf(
+        "SELECT * FROM server_history
+        WHERE time BETWEEN '%s' AND '%s'
+        ORDER BY UNIX_TIMESTAMP(time) DESC;",
+        $start,
+        $end
+    );
+
+    return $query;
+}
+function serverHistoryDelete($query){
+    $id = '';
+    if (!empty($_GET['id'])) {
+        $id = $_GET['id'];
+    }
+
+    $query = sprintf(
+        "DELETE FROM server_history WHERE id='%d'",
+        $id
+    );
+
+    return $query;
+}
+function serverHistoryDeleteDate($query){
+    $date = '';
+    if (!empty($_POST['date'])) {
+        $date = $_POST['date'];
+    }
+
+    $query = sprintf(
+        "DELETE FROM server_history
+        WHERE time < '%s'",
+        $date
+    );
+
+    return $query;
+}
+function serverHistoryAdd($query){
+    $query = sprintf(
+        "INSERT INTO server_history (time,description)
+        VALUES ('%s', '%s');",
+        $_POST['time'],
+        $_POST['description']
+    );
+
+    return $query;
+}
 function payDateSearch($query)
 {
     $query = "SELECT * FROM pay_history";
@@ -1070,10 +1128,6 @@ if($conn){
         //刪除歷史紀錄
         case 'history_delete':
             $query = historyDelete($query);
-            break;
-        //修改歷史紀錄
-        case 'history_update':
-            $query = holidayUpdate($query);
             $output = false;
             break;
         //新增歷史紀錄
@@ -1299,6 +1353,29 @@ if($conn){
             break;
         case 'line_pay_update':
             $query = LinePayUpdate($query);
+            $output = false;
+            break;
+        //查詢所有歷史紀錄
+        case 'server_history_search':
+            $query = "SELECT * FROM `server_history` ORDER BY UNIX_TIMESTAMP(time) DESC;";
+            break;
+        //查詢期間歷史紀錄
+        case 'server_history_date_search':
+            $query = serverHistoryDateSearch($query);
+            break;
+        //刪除歷史紀錄
+        case 'server_history_delete':
+            $query = serverHistoryDelete($query);
+            $output = false;
+            break;
+        //刪除歷史紀錄
+        case 'server_history_date_delete':
+            $query = serverHistoryDeleteDate($query);
+            $output = false;
+            break;
+        //新增歷史紀錄
+        case 'server_history_add':
+            $query = serverHistoryAdd($query);
             $output = false;
             break;
         default:
