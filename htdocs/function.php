@@ -694,6 +694,20 @@ function payHistoryAdd($query)
     );
     return $query;
 }
+function payHistoryDeleteDate($query){
+    $date = '';
+    if (!empty($_POST['date'])) {
+        $date = $_POST['date'];
+    }
+
+    $query = sprintf(
+        "DELETE FROM pay_history
+        WHERE time < '%s'",
+        $date
+    );
+
+    return $query;
+}
 function carInsideWithCarNumber($query)
 {
     $query = sprintf( "SELECT * FROM cars_inside WHERE car_number = '%s'",$_GET['car_number']);
@@ -1003,6 +1017,49 @@ function LinePayUpdate($query){
 
     return $query;
 }
+function accountPreferenceSingleSearch($query)
+{
+    $ip = '';
+    $vpn = '';
+    if (!empty($_GET['ip'])) {
+        $ip = $_GET['ip'];
+    }
+    if (!empty($_GET['vpn'])) {
+        $ip = $_GET['vpn'];
+    }
+    $query = sprintf(
+        "SELECT * FROM account_preference WHERE ip='%s'",
+        $ip
+    );
+
+    return $query;
+}
+function accountPreferenceAdd($query)
+{
+    $ip = '';
+    if (!empty($_GET['ip'])) {
+        $ip = $_GET['ip'];
+    }
+    $query = sprintf(
+        "INSERT INTO account_preference (ip,vpn)
+        VALUES (%s, '%s');",
+        $ip,
+        $vpn
+    );
+    return $query;
+}
+function accountPreferenceDelete($query)
+{
+    $ip = '';
+    if (!empty($_GET['ip'])) {
+        $ip = $_GET['ip'];
+    }
+    $query = sprintf(
+        "DELETE FROM account_preference WHERE ip='%s'",
+        $ip
+    );
+    return $query;
+}
 $func = $_GET['func'];
 $query = '';
 $output = true;
@@ -1121,6 +1178,14 @@ if($conn){
         case 'history_search':
             $query = "SELECT * FROM `history` ORDER BY UNIX_TIMESTAMP(time_in) DESC;";
             break;
+        //查詢最新二十筆歷史紀錄
+        case 'history_search_20':
+            $query = "SELECT * FROM `history` ORDER BY UNIX_TIMESTAMP(time_in) DESC LIMIT 20;";
+            break;
+        //查詢最新二十筆歷史紀錄
+        case 'history_search_10':
+            $query = "SELECT * FROM `history` ORDER BY UNIX_TIMESTAMP(time_in) DESC LIMIT 10;";
+            break;
         //查詢期間歷史紀錄
         case 'history_date_search':
             $query = historyDateSearch($query);
@@ -1139,6 +1204,10 @@ if($conn){
         case 'pay_search':
             $query = "SELECT * FROM `pay_history` ORDER BY UNIX_TIMESTAMP(time_pay) DESC;";
             break;
+        //查詢最新二十筆繳費紀錄
+        case 'pay_search_20':
+            $query = "SELECT * FROM `pay_history` ORDER BY UNIX_TIMESTAMP(time_pay) DESC LIMIT 20;";
+            break;
         //查詢期間內繳費紀錄
         case 'pay_dates_search':
             $query = payDateSearch($query);
@@ -1146,6 +1215,11 @@ if($conn){
         //新增繳費紀錄
         case 'pay_dates_add':
             $query = payHistoryAdd($query);
+            $output = false;
+            break;
+        //刪除繳費記錄
+        case 'pay_dates_delete':
+            $query = payHistoryDeleteDate($query);
             $output = false;
             break;
         //月票新增
@@ -1355,28 +1429,47 @@ if($conn){
             $query = LinePayUpdate($query);
             $output = false;
             break;
-        //查詢所有歷史紀錄
+        //查詢所有log歷史紀錄
         case 'server_history_search':
             $query = "SELECT * FROM `server_history` ORDER BY UNIX_TIMESTAMP(time) DESC;";
             break;
-        //查詢期間歷史紀錄
+        //查詢最新二十筆log歷史紀錄
+        case 'server_history_search_20':
+            $query = "SELECT * FROM `server_history` ORDER BY UNIX_TIMESTAMP(time) DESC LIMIT 20;";
+            break;
+        //查詢log期間歷史紀錄
         case 'server_history_date_search':
             $query = serverHistoryDateSearch($query);
             break;
-        //刪除歷史紀錄
+        //刪除log紀錄
         case 'server_history_delete':
             $query = serverHistoryDelete($query);
             $output = false;
             break;
-        //刪除歷史紀錄
+        //刪除log某期間紀錄
         case 'server_history_date_delete':
             $query = serverHistoryDeleteDate($query);
             $output = false;
             break;
-        //新增歷史紀錄
+        //新增log歷史紀錄
         case 'server_history_add':
             $query = serverHistoryAdd($query);
             $output = false;
+            break;
+        
+        case 'account_preference_add':
+            $query = accountPreferenceAdd($query);
+            $output = false;
+            break;
+        case 'account_preference_delete':
+            $query = accountPreferenceDelete($query);
+            $output = false;
+            break;
+        case 'account_preference_search':
+            $query = "SELECT * FROM account_preference;";
+            break;
+        case 'account_preference_single_search':
+            $query = accountPreferenceSingleSearch($query);
             break;
         default:
             # code...

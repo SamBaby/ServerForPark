@@ -4,7 +4,7 @@ import logging
 import requests
 import base64
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import threading
 import shutil
@@ -318,6 +318,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         ip = data["AlarmInfoPlate"]["ipaddr"]
         car_number = reselt["license"]
         if car_number == 'No Plate' or car_number == "":
+            addLogs(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), "辨識不到車牌")
             return response
         # get ip cam data
         cam = getIpCam(ip)
@@ -334,6 +335,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         if cam_in_out == "0":
             #in-cam
             if checkCanIn():
+                addLogs(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), car_number + "進場")
                 #if the car is allowed to in, refresh the LED and add it to the database.
                 if read_gio == '1':
                     if cam_status[ip].imageOpen == False:
@@ -370,6 +372,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                 response["Response_AlarmInfoPlate"]["info"] = "no"
                 cam_status[ip].needToOpen = True
             else:
+                addLogs(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), "車位已滿")
                 cam_status[ip].serialDataToSend["0"].clear()
                 cam_status[ip].serialDataToSend["1"].clear()
                 response["Response_AlarmInfoPlate"]["info"] = "no"
@@ -381,6 +384,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         else:
             #out cam
             if checkCanOut(data):
+                addLogs(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), car_number + "出場")
                 #if the car is allowed to out, refresh the LED and add it to the database.
                 if read_gio == '1':
                     if cam_status[ip].imageOpen == False:
@@ -525,8 +529,11 @@ def checkCanOut(data):
         regular_pass = checkIsRegular(car_number)
         if regular_pass is not None and regular_pass['due_date'] is not None:
             due_time = datetime.strptime(regular_pass['due_date'], "%Y-%m-%d")
+            due_time = due_time + timedelta(days=1)
             if due_time >= nowTime:  
                 return True
+            else:
+                addLogs(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), "月租車過期:"+car_number)
         elif carInside["time_pay"] is not None and carInside["time_pay"] != "":
             time_pay = carInside["time_pay"]
             payTime = datetime.strptime(time_pay, "%Y-%m-%d %H:%M:%S")
@@ -534,6 +541,10 @@ def checkCanOut(data):
             seconds = diffTime.seconds
             if seconds <= getExitCountTime():
                 ret = True
+        else:
+            addLogs(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), "車輛尚未繳費:"+car_number)
+    else:
+        addLogs(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), "場內無此車:"+car_number)
     return ret
 #check if the car is a regular car
 def checkIsRegular(carNumber):
@@ -641,7 +652,6 @@ def deleteCarInside(car_number):
     x = requests.get(url, params = myobj)
 #add car to history after exiting
 def addHistory(car_data, time_out, path):
-    print(time_out)
     myobj = {'func': 'history_add'}
     myobj["car_number"] = car_data["car_number"]
     myobj["time_in"] = car_data["time_in"]
@@ -663,8 +673,6 @@ def addHistory(car_data, time_out, path):
     myobj["color"] = car_data["color"]
     myobj["path"] = path
     x = requests.post(url + "?func=history_add", data = myobj)
-    
-    print(x)
 #get cam with certain ip in database
 def getIpCam(ip):
     myobj = {'func': 'cam_single_search'}
@@ -703,6 +711,13 @@ def updateCamNotToClose(ip):
     myobj["ip"] = ip
     myobj["close"] = 0
     x = requests.get(url, params = myobj)
+#add log to database
+def addLogs(time, description):
+    #update cam open status on SQL
+    myobj = {'func': 'server_history_add'}
+    myobj["time"] = time
+    myobj["description"] = description
+    x = requests.post(url + "?func=server_history_add", data = myobj)
 #init cam dictionay if it's not been initialized
 def setCams(ip):
     cam_status[ip] = camStatus()
