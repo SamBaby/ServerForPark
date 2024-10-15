@@ -203,16 +203,6 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                 cam_status[ip].serialStop = False
                 res["Response_Heartbeat"]["info"] = "ok"
             else:
-                res["Response_Heartbeat"]["serialData"].append({
-                    "serialChannel": 0,
-                    "data": "",
-                    "dataLen": 0
-                })
-                res["Response_Heartbeat"]["serialData"].append({
-                    "serialChannel": 1,
-                    "data": "",
-                    "dataLen": 0
-                })
                 cam_status[ip].serialStop = True
             return res
         cam_status[ip].needToClose = cam_status[ip].needToClose or close == "1"
@@ -223,16 +213,6 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                 cam_status[ip].serialStop = False
                 res["Response_Heartbeat"]["shutoff"] = "ok"
             else:
-                res["Response_Heartbeat"]["serialData"].append({
-                    "serialChannel": 0,
-                    "data": "",
-                    "dataLen": 0
-                })
-                res["Response_Heartbeat"]["serialData"].append({
-                    "serialChannel": 1,
-                    "data": "",
-                    "dataLen": 0
-                })
                 cam_status[ip].serialStop = True
             return res
         #check if heartbeat has serial data
@@ -310,7 +290,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     "info": "no",
                     "content": "retransfer_stop",
                     "is_pay": "true",
-                    "serialData": [{"serialChannel": 0,	"data": "",	"dataLen": 0}, {"serialChannel": 1,	"data": "",	"dataLen": 0}]
+                    "serialData": []
                     }
                 }
         #car detailed data
@@ -371,6 +351,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     displayWelcomeThreeTimes(ip, car_number)
                 response["Response_AlarmInfoPlate"]["info"] = "no"
                 cam_status[ip].needToOpen = True
+                cam_status[ip].serialStop = True
             else:
                 addLogs(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"), "車位已滿")
                 cam_status[ip].serialDataToSend["0"].clear()
@@ -422,6 +403,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
                     setCarNumberSerialData(ip, car_number)
                 response["Response_AlarmInfoPlate"]["info"] = "no"
                 cam_status[ip].needToOpen = True
+                cam_status[ip].serialStop = True
             else:
                 #if the car is not allowed to out, show need-to-play on LED
                 cam_status[ip].serialDataToSend["0"].clear()
